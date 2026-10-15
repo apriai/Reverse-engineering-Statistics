@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trader Estadistico · Probabilidad y esperanza para prop firms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#04060E; --panel:rgba(14,22,44,.55);
+  --line:rgba(86,140,255,.18); --line-soft:rgba(86,140,255,.10);
+  --neon:#2E7DFF; --neon-br:#5C9FFF; --neon-glow:rgba(46,125,255,.55);
+  --green:#34D976; --green-glow:rgba(52,217,118,.5);
+  --red:#FF5C66; --red-glow:rgba(255,92,102,.45);
+  --amber:#FF9D3D;
+  --txt:#EAF1FF; --dim:#93A6CC; --faint:#5B6E92;
+  --disp:'Sora',sans-serif; --mono:'IBM Plex Mono',monospace; --body:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(900px 500px at 50% -8%,rgba(46,125,255,.16),transparent 70%),radial-gradient(700px 500px at 100% 10%,rgba(46,125,255,.08),transparent 60%),radial-gradient(1px 1px at 20% 30%,rgba(160,200,255,.5),transparent),radial-gradient(1px 1px at 70% 20%,rgba(160,200,255,.35),transparent),radial-gradient(1px 1px at 40% 70%,rgba(160,200,255,.3),transparent),radial-gradient(1px 1px at 85% 60%,rgba(160,200,255,.4),transparent),radial-gradient(1px 1px at 15% 85%,rgba(160,200,255,.3),transparent);
+  background-attachment:fixed}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px 90px}
+.glass{background:var(--panel);border:1px solid var(--line);border-radius:18px;backdrop-filter:blur(12px);box-shadow:0 0 0 1px rgba(46,125,255,.04) inset,0 18px 50px -28px rgba(0,0,0,.9)}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:26px 0 18px}
+.brand{display:flex;align-items:center;gap:14px}
+.bot{width:46px;height:46px;filter:drop-shadow(0 0 8px rgba(207,254,22,.35))}
+.bot path,.bot rect,.bot circle,.bot line{fill:none;stroke:#cffe16;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.brand .txt h1{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:-.4px;line-height:1}
+.brand .txt h1 b{color:#cffe16;text-shadow:0 0 16px rgba(207,254,22,.4)}
+.brand .txt p{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.4px;margin-top:5px;text-transform:uppercase}
+
+.section-label{font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:1.4px;margin:0 0 11px 3px;display:flex;align-items:center;gap:8px}
+.section-label::before{content:'';width:14px;height:1px;background:var(--neon);box-shadow:0 0 6px var(--neon-glow)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.chip{background:rgba(14,22,44,.5);border:1px solid var(--line);color:var(--dim);border-radius:11px;padding:9px 14px;font-size:12px;font-weight:500;cursor:pointer;transition:.18s;white-space:nowrap}
+.chip:hover{border-color:var(--neon);color:var(--txt);transform:translateY(-1px)}
+.chip.act{background:linear-gradient(180deg,rgba(46,125,255,.22),rgba(46,125,255,.08));border-color:var(--neon);color:#fff;box-shadow:0 0 18px -4px var(--neon-glow),0 0 0 1px rgba(46,125,255,.3) inset}
+.chip.sm{padding:7px 11px;font-size:11px;border-radius:9px}
+
+/* global params strip */
+.gparams{padding:16px 18px;margin-bottom:18px}
+.gp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px 22px}
+@media(max-width:760px){.gp-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.gp-grid{grid-template-columns:1fr}}
+.slider{display:flex;flex-direction:column;gap:8px}
+.slider .top{display:flex;justify-content:space-between;align-items:baseline}
+.slider .lbl{font-size:12px;color:var(--dim)}
+.slider .bubble{font-family:var(--mono);font-size:13px;color:var(--neon-br);font-weight:600;text-shadow:0 0 10px var(--neon-glow)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:5px;background:linear-gradient(90deg,var(--neon) var(--p,40%),rgba(86,140,255,.15) var(--p,40%));outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:#fff;border:3px solid var(--neon);box-shadow:0 0 14px var(--neon-glow);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--neon);box-shadow:0 0 14px var(--neon-glow);cursor:pointer}
+.dll-row{grid-column:1/-1;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;background:rgba(46,125,255,.07);border:1px solid var(--line);border-radius:12px}
+.dll-row .info .t{font-size:13px;font-weight:600}
+.dll-row .info .d{font-size:11px;color:var(--faint);margin-top:2px}
+.sw{display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0}
+.sw input{display:none}
+.sw .track{width:44px;height:25px;border-radius:20px;background:rgba(86,140,255,.12);border:1px solid var(--line);position:relative;transition:.2s}
+.sw .track::after{content:'';position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:var(--faint);transition:.2s}
+.sw input:checked + .track{background:rgba(46,125,255,.3);border-color:var(--neon)}
+.sw input:checked + .track::after{transform:translateX(19px);background:#fff;box-shadow:0 0 12px var(--neon-glow)}
+.dll-size{display:flex;align-items:center;gap:9px;flex:1;min-width:180px}
+.dll-size.off{opacity:.4;pointer-events:none}
+.dll-size input[type=range]{flex:1}
+.dll-size .bubble{font-family:var(--mono);font-size:13px;color:var(--neon-br);min-width:70px;text-align:right}
+
+/* tabs */
+.tabbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.tab{flex:1;min-width:140px;background:rgba(14,22,44,.5);border:1px solid var(--line);border-radius:13px;padding:12px 14px;cursor:pointer;transition:.18s;text-align:left}
+.tab:hover{border-color:var(--neon);transform:translateY(-1px)}
+.tab.act{background:linear-gradient(180deg,rgba(46,125,255,.2),rgba(46,125,255,.06));border-color:var(--neon);box-shadow:0 0 20px -6px var(--neon-glow)}
+.tab .tt{font-family:var(--disp);font-size:12px;font-weight:600;color:var(--dim);display:flex;align-items:center;gap:6px}
+.tab.act .tt{color:#fff}
+.tab .tp{font-family:var(--mono);font-size:20px;font-weight:600;color:var(--neon-br);margin-top:6px;text-shadow:0 0 12px var(--neon-glow)}
+.tab.ev .tp{color:var(--green);text-shadow:0 0 12px var(--green-glow)}
+.tab.ev.neg .tp{color:var(--red)}
+
+.panel{padding:22px 24px;margin-bottom:20px}
+.panel h2{font-family:var(--disp);font-size:18px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+.panel .lead{font-size:13px;color:var(--dim);margin-bottom:18px;line-height:1.6}
+
+/* context bar */
+.ctxbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.ctxitem{background:rgba(6,10,22,.5);border:1px solid var(--line-soft);border-radius:11px;padding:10px 14px;flex:1;min-width:120px}
+.ctxitem .k{font-family:var(--mono);font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.ctxitem .v{font-family:var(--mono);font-size:16px;font-weight:600}
+.recov{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 15px;border-radius:12px;margin-bottom:18px;font-size:12.5px}
+.recov.yes{background:rgba(52,217,118,.09);border:1px solid rgba(52,217,118,.3)}
+.recov.no{background:rgba(255,92,102,.09);border:1px solid rgba(255,92,102,.3)}
+.recov .badge{font-family:var(--mono);font-weight:600;font-size:11px;padding:4px 10px;border-radius:7px;flex-shrink:0}
+.recov.yes .badge{background:rgba(52,217,118,.18);color:var(--green)}
+.recov.no .badge{background:rgba(255,92,102,.18);color:var(--red)}
+.recov .why{color:var(--dim);flex:1;min-width:200px}
+.recov .ovr{display:flex;gap:5px}
+.recov .ovr button{background:#04060E;border:1px solid var(--line);color:var(--dim);border-radius:7px;padding:5px 9px;font-family:var(--mono);font-size:10px;cursor:pointer}
+.recov .ovr button.act{background:rgba(46,125,255,.18);border-color:var(--neon);color:#fff}
+
+/* big prob */
+.bigprob{display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px}
+.bigprob .main .k{font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.bigprob .main .v{font-family:var(--disp);font-weight:800;font-size:clamp(38px,8vw,58px);line-height:.9;color:#fff;text-shadow:0 0 26px var(--neon-glow)}
+.bigprob .cmp{font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.9;border-left:1px solid var(--line);padding-left:18px}
+.bigprob .cmp b{color:var(--neon-br)} .bigprob .cmp .agg{color:var(--amber)}
+.formula{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:6px}
+
+/* viz */
+.viz{margin-bottom:20px}
+.viz .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.viz h3{font-family:var(--disp);font-size:12px;font-weight:600;color:var(--dim)}
+.legend{display:flex;gap:14px;font-family:var(--mono);font-size:10px;color:var(--dim)}
+.legend span{display:flex;align-items:center;gap:6px} .legend i{width:10px;height:3px;border-radius:2px;display:inline-block}
+.legend .t i{background:var(--green);box-shadow:0 0 6px var(--green-glow)} .legend .r i{background:var(--red);box-shadow:0 0 6px var(--red-glow)}
+#walk{display:block;width:100%;height:170px;border-radius:12px;background:#02030A}
+
+/* plan editor */
+.plan h3,.testbox h3{font-family:var(--disp);font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:9px}
+.plan h3::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px var(--neon-glow)}
+.plan-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:flex;gap:6px}
+.seg button{background:#04060E;border:1px solid var(--line);color:var(--dim);border-radius:9px;padding:7px 13px;font-family:var(--mono);font-size:11px;cursor:pointer;transition:.15s}
+.seg button:hover{border-color:var(--neon)} .seg button.act{background:rgba(46,125,255,.18);border-color:var(--neon);color:#fff}
+.patterns{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.patterns .lbl{font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:1px}
+.lab-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;margin-bottom:6px}
+.lab-table th{text-align:left;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.6px;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500}
+.lab-table td{padding:5px 8px;border-bottom:1px solid var(--line-soft)}
+.lab-table th.num,.lab-table td.num{text-align:right}
+.lab-inp{width:92px;background:#04060E;border:1px solid var(--line);border-radius:7px;color:var(--txt);font-family:var(--mono);font-size:12px;padding:6px 9px;text-align:right}
+.lab-inp:focus{outline:none;border-color:var(--neon);box-shadow:0 0 0 3px rgba(46,125,255,.12)}
+.lab-inp:disabled{opacity:.5}
+.lab-p{color:var(--neon-br)}
+.lab-del{background:none;border:none;color:var(--faint);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
+.lab-del:hover{color:var(--red);background:rgba(255,92,102,.1)}
+.lab-add{background:rgba(46,125,255,.1);border:1px dashed var(--line);color:var(--neon-br);border-radius:9px;padding:8px;width:100%;cursor:pointer;font-family:var(--mono);font-size:11px;margin-top:4px}
+.lab-add:disabled{opacity:.4;cursor:not-allowed}
+.note-recov{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:8px;line-height:1.5}
+.valid{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.vchip{display:flex;align-items:center;gap:7px;background:rgba(6,10,22,.5);border:1px solid var(--line-soft);border-radius:10px;padding:8px 12px;font-family:var(--mono);font-size:11px}
+.vchip .ic{width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+.vchip.ok .ic{background:rgba(52,217,118,.18);color:var(--green)} .vchip.bad .ic{background:rgba(255,92,102,.18);color:var(--red)}
+.vchip.bad .v{color:var(--red)}
+
+/* test */
+.testbox{margin-top:20px;border-top:1px solid var(--line);padding-top:18px}
+.hedgebox{margin-top:20px;border:1px solid rgba(52,217,118,.28);border-radius:14px;padding:15px 17px;background:linear-gradient(180deg,rgba(52,217,118,.06),rgba(52,217,118,.015))}
+.hedge-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.hedge-head h3{margin:0;font-size:14px;color:var(--green)}
+.hedge-teaser{margin-top:9px;font-size:12px;color:var(--dim);line-height:1.5}
+.hedge-ctl{display:flex;flex-direction:column;gap:11px;margin-top:13px}
+.hedge-ctl .hrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hedge-ctl .lbl{font-size:11px;color:var(--dim);min-width:170px}
+.hedgebox input[type=number]{background:#04060E;border:1px solid var(--line);border-radius:8px;color:var(--txt);font-family:var(--mono);font-size:13px;padding:8px 10px;width:96px;text-align:right}
+.hedgebox input[type=number]:focus{outline:none;border-color:var(--green)}
+.hedge-trade{margin-top:13px;border:1px solid rgba(52,217,118,.4);border-radius:12px;padding:13px 15px;background:rgba(52,217,118,.07)}
+.hedge-trade .k{font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.hedge-trade .big{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--green);margin:5px 0;text-shadow:0 0 14px var(--green-glow)}
+.hedge-trade .sub{font-size:12px;color:var(--dim);line-height:1.55}
+.hedge-esc{display:flex;flex-direction:column;gap:7px;margin-top:11px;font-size:12.5px;line-height:1.55}
+.hedge-esc b.g{color:var(--green)} .hedge-esc b.r{color:var(--red)} .hedge-esc b.m{font-family:var(--mono)}
+.test-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.btn-test{background:linear-gradient(180deg,#2E7DFF,#1E63E0);border:none;color:#fff;font-family:var(--disp);font-weight:600;font-size:13px;padding:11px 20px;border-radius:11px;cursor:pointer;box-shadow:0 0 22px -6px var(--neon-glow);transition:.15s}
+.btn-test:hover{transform:translateY(-1px)} .btn-test:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.trials-pick{display:flex;align-items:center;gap:7px}
+.trials-pick .lbl{font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase}
+.progress{height:5px;border-radius:4px;background:rgba(86,140,255,.12);overflow:hidden;margin-top:14px;display:none}
+.progress.on{display:block} .progress .bar{height:100%;background:var(--neon);box-shadow:0 0 10px var(--neon-glow);width:0%}
+.test-results{display:none;margin-top:16px} .test-results.on{display:block}
+.tr-top{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.tr-big .v{font-family:var(--disp);font-weight:800;font-size:38px;line-height:.9;color:#fff;text-shadow:0 0 18px var(--neon-glow)}
+.tr-big .k{font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.tr-cmp{font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.7} .tr-cmp b{color:var(--neon-br)}
+.split-bar{height:28px;border-radius:9px;overflow:hidden;display:flex;font-family:var(--mono);font-size:11px;font-weight:600}
+.split-bar .pass{background:linear-gradient(180deg,#34D976,#22B05E);color:#03240F;display:flex;align-items:center;justify-content:center}
+.split-bar .fail{background:linear-gradient(180deg,#FF5C66,#E03E48);color:#2a0608;display:flex;align-items:center;justify-content:center}
+.hist{margin-top:16px} .hist .ht{font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.hist-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-family:var(--mono);font-size:11px}
+.hist-row .lab2{width:80px;color:var(--dim);flex-shrink:0}
+.hist-row .track2{flex:1;height:13px;background:rgba(255,92,102,.08);border-radius:4px;overflow:hidden}
+.hist-row .fillb{height:100%;background:linear-gradient(90deg,#FF5C66,#E03E48);border-radius:4px;width:0%;box-shadow:0 0 8px var(--red-glow)}
+.hist-row .pct2{width:50px;text-align:right;color:var(--red);flex-shrink:0}
+.insight{margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--dim);background:rgba(6,10,22,.4);border:1px solid var(--line-soft);border-radius:10px;padding:11px 14px;line-height:1.6}
+.insight b{color:var(--neon-br)}
+
+/* EV tab */
+.hero-main{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.hero-main .k{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.hero-val{font-family:var(--disp);font-weight:800;font-size:clamp(40px,9vw,62px);line-height:.9;letter-spacing:-1.5px}
+.hero-val.pos{color:var(--green);text-shadow:0 0 28px var(--green-glow)} .hero-val.neg{color:var(--red);text-shadow:0 0 28px var(--red-glow)}
+.hero-sub{font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:6px}
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+@media(max-width:680px){.hero-stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:rgba(6,10,22,.5);border:1px solid var(--line-soft);border-radius:13px;padding:13px 14px}
+.stat .k{font-family:var(--mono);font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1}
+.v-blue{color:var(--neon-br)} .v-green{color:var(--green)} .v-red{color:var(--red)}
+table.std{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;margin-top:8px}
+table.std th{text-align:left;color:var(--faint);font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;padding:8px 9px;border-bottom:1px solid var(--line)}
+table.std td{padding:9px;border-bottom:1px solid var(--line-soft)} table.std tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right}
+.assume li{list-style:none;font-size:11.5px;color:var(--dim);padding-left:18px;position:relative;margin-bottom:5px;line-height:1.6}
+.assume li::before{content:'▸';position:absolute;left:2px;color:var(--neon);font-size:10px}
+.subh{font-family:var(--disp);font-size:13px;font-weight:600;margin:22px 0 10px;display:flex;align-items:center;gap:9px}
+.subh::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px var(--neon-glow)}
+
+/* advanced */
+.adv{margin-bottom:20px}
+.adv>summary{list-style:none;cursor:pointer;padding:15px 20px;display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:600;font-size:14px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}
+.adv[open]>summary{border-radius:14px 14px 0 0;border-bottom-color:transparent}
+.adv>summary::-webkit-details-marker{display:none} .adv>summary .chev{margin-left:auto;color:var(--neon-br);transition:transform .2s}
+.adv[open]>summary .chev{transform:rotate(180deg)}
+.adv-body{border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;padding:6px 20px 18px;background:var(--panel)}
+.adv-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
+@media(max-width:680px){.adv-grid{grid-template-columns:1fr}}
+.grp h4{font-family:var(--disp);font-size:11px;font-weight:600;color:var(--neon-br);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 9px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.field.row{flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+.field label{font-size:11.5px;color:var(--dim)}
+.field input{background:#04060E;border:1px solid var(--line);border-radius:8px;color:var(--txt);font-family:var(--mono);font-size:13px;padding:9px 11px;width:100%}
+.field.row input{width:108px;text-align:right} .field input:focus{outline:none;border-color:var(--neon)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.mini-sw{display:flex;align-items:center;gap:9px;cursor:pointer;margin:6px 0}
+.mini-sw input{display:none}
+.mini-sw .tr{width:36px;height:20px;border-radius:14px;background:rgba(86,140,255,.12);border:1px solid var(--line);position:relative;transition:.2s}
+.mini-sw .tr::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--faint);transition:.2s}
+.mini-sw input:checked + .tr{background:rgba(46,125,255,.3);border-color:var(--neon)}
+.mini-sw input:checked + .tr::after{transform:translateX(16px);background:#fff}
+.mini-sw .l{font-size:12px;color:var(--txt)}
+.cond{display:none;border-left:2px solid var(--line);padding-left:12px;margin:4px 0 8px}.cond.on{display:block}
+.seg.full button{flex:1}
+footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--faint);line-height:1.7}
+footer b{color:var(--dim)}
+.hidden{display:none!important}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <img class="bot" src="./trader-estadistico-logo.png" alt="Trader Estadistico" width="46" height="46">
+    <div class="txt"><h1>Trader <b>Estadistico</b></h1><p>Probabilidad · esperanza · prop firms</p></div>
+  </div>
+</header>
+
+<p class="section-label">Prop firm</p>
+<div class="chips" id="chipsFirm"></div>
+
+<!-- GLOBAL PARAMS -->
+<div class="gparams glass">
+  <div class="gp-grid">
+    <div class="slider"><div class="top"><span class="lbl">Target evaluación</span><span class="bubble" id="bb_target"></span></div><input type="range" id="sl_target" min="250" max="15000" step="50"></div>
+    <div class="slider"><div class="top"><span class="lbl">Drawdown total</span><span class="bubble" id="bb_ddSize"></span></div><input type="range" id="sl_ddSize" min="250" max="8000" step="50"></div>
+    <div class="slider"><div class="top"><span class="lbl">Coste examen</span><span class="bubble" id="bb_buyCost"></span></div><input type="range" id="sl_buyCost" min="0" max="600" step="1"></div>
+    <div class="slider"><div class="top"><span class="lbl">Colchón retiro</span><span class="bubble" id="bb_bufferReq"></span></div><input type="range" id="sl_bufferReq" min="250" max="8000" step="50"></div>
+    <div class="slider"><div class="top"><span class="lbl">Importe por retiro</span><span class="bubble" id="bb_payoutAmount"></span></div><input type="range" id="sl_payoutAmount" min="250" max="6000" step="50"></div>
+    <div class="slider"><div class="top"><span class="lbl">Drawdown</span><span class="bubble" id="ddTypeLbl" style="font-size:11px"></span></div>
+      <div class="seg full" id="ddTypeSeg"><button data-v="static">Static</button><button data-v="eod">EOD trail</button><button data-v="intraday">Intraday</button></div></div>
+    <div class="dll-row">
+      <div class="info"><div class="t">⚡ Daily Loss Limit (DLL)</div><div class="d">Si existe, un día malo solo cuesta el DLL — al día siguiente puedes recuperar.</div></div>
+      <label class="sw"><input type="checkbox" id="dllEnabled"><span class="track"></span></label>
+      <div class="dll-size off" id="dllSizeWrap"><span class="lbl" style="font-size:11px;color:var(--dim)">Tamaño</span><input type="range" id="sl_dllSize" min="100" max="4000" step="50"><span class="bubble" id="bb_dllSize"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADVANCED -->
+<details class="adv glass" style="background:transparent;border:none;box-shadow:none;backdrop-filter:none">
+  <summary>⚙️ Configuración avanzada<span class="chev">▾</span></summary>
+  <div class="adv-body"><div class="adv-grid">
+    <div class="grp"><h4>Evaluación</h4>
+      <div class="two"><div class="field"><label>Cuenta ($)</label><input type="number" id="accountSize"></div><div class="field"><label>Coste reset ($)</label><input type="number" id="resetCost"></div></div>
+      <div class="two"><div class="field"><label>Mín. días</label><input type="number" id="minDays"></div><div class="field"><label>Máx. días (0=sin)</label><input type="number" id="maxDays"></div></div>
+      <label class="mini-sw"><input type="checkbox" id="consEnabled"><span class="tr"></span><span class="l">Regla de consistencia</span></label>
+      <div class="cond" id="consCond"><div class="field row"><label>Máx. por día (%)</label><input type="number" id="consistency"></div><div class="field row"><label>Margen seguridad (%)</label><input type="number" id="safety"></div></div>
+    </div>
+    <div class="grp"><h4>Payout</h4>
+      <div class="two"><div class="field"><label>Split trader (%)</label><input type="number" id="split"></div><div class="field"><label>Días mín. retiro</label><input type="number" id="payoutMinDays"></div></div>
+      <label class="mini-sw"><input type="checkbox" id="includeApprove"><span class="tr"></span><span class="l">Incluir aprobación en los payouts</span></label>
+      <div class="note-recov">Activo = probabilidades de retiro absolutas (multiplican por aprobar). Inactivo = condicionadas a estar fondeado.</div>
+      <div class="field row" style="margin-top:8px"><label>Riesgo/día sin DLL ($) <span style="color:var(--faint)">0=DD</span></label><input type="number" id="riskPerDay"></div>
+    </div>
+  </div></div>
+</details>
+
+<!-- TABS -->
+<div class="tabbar" id="tabbar"></div>
+
+<!-- PHASE PANEL -->
+<div class="panel glass" id="panelPhase">
+  <h2 id="phTitle"></h2>
+  <div class="lead" id="phLead"></div>
+  <div class="ctxbar" id="phCtx"></div>
+  <div class="recov" id="phRecov"></div>
+  <div class="bigprob">
+    <div class="main"><div class="k">Probabilidad de esta fase</div><div class="v" id="phProb">—</div><div class="formula" id="phFormula"></div></div>
+    <div class="cmp" id="phCmp"></div>
+  </div>
+  <div class="viz" id="vizBox">
+    <div class="head"><h3 id="vizTitle">Paseo aleatorio de esta fase</h3><div class="legend"><span class="t"><i></i>alcanza objetivo</span><span class="r"><i></i>ruina</span></div></div>
+    <canvas id="walk" width="900" height="170"></canvas>
+  </div>
+  <div class="plan">
+    <div class="field row hidden" id="firstPayoutGoalWrap"><label for="firstPayoutGoal">Meta del primer retiro ($)</label><input type="number" id="firstPayoutGoal" min="1" step="50"></div>
+    <div class="plan-head"><h3>Plan de objetivos por día</h3>
+      <div class="seg" style="gap:10px;flex-wrap:wrap">
+        <div class="seg" id="riskSeg"><button data-v="auto" class="act">Riesgo auto</button><button data-v="manual">Riesgo manual</button></div>
+        <div class="seg" id="modeSeg"><button data-v="auto" class="act">Auto</button><button data-v="manual">Manual</button></div>
+      </div></div>
+    <div class="patterns" id="patterns"><span class="lbl">Patrón</span>
+      <button class="chip sm" data-pat="optima">Óptima</button><button class="chip sm" data-pat="plano">Plano</button><button class="chip sm" data-pat="frontal">Frontal</button><button class="chip sm" data-pat="escalera">Escalera</button></div>
+    <table class="lab-table"><thead><tr><th>Día</th><th class="num">Objetivo ($)</th><th class="num">Riesgo/día ($)</th><th class="num">Prob. día</th><th class="num hedge-col" id="thHm" style="display:none">🛡️ Real (inverso)</th><th class="num hedge-col" id="thHv" style="display:none">Si muere, cobras</th><th></th></tr></thead><tbody id="labBody"></tbody></table>
+    <button class="lab-add" id="labAdd">+ Añadir día</button>
+    <div class="note-recov" id="planNote"></div>
+    <div class="valid" id="validStrip"></div>
+  </div>
+  <div class="hedgebox" id="hedgeBox">
+    <div class="hedge-head">
+      <h3>🛡️ Hedge con capital real</h3>
+      <label class="mini-sw"><input type="checkbox" id="hedgeOn"><span class="tr"></span><span class="l">Activar cobertura</span></label>
+    </div>
+    <div class="hedge-teaser" id="hedgeTeaser">Actívalo y te digo el trade exacto que poner en tu cuenta REAL para recuperar el valor del examen si la fondeada muere. El valor se adapta solo: fondeado, el examen vale los que se queman de media para aprobar; y dentro de cada fase crece cada día con la probabilidad de haber llegado hasta ahí.</div>
+    <div id="hedgeBody" style="display:none">
+      <div class="hedge-ctl" id="hedgeCtl"></div>
+      <div id="hedgeOut"></div>
+    </div>
+  </div>
+  <div class="testbox" id="testBox">
+    <h3>Probar con simulación</h3>
+    <div class="test-controls">
+      <button class="btn-test" id="btnTest">▶ Probar estrategia</button>
+      <div class="trials-pick"><span class="lbl">Intentos</span><div class="seg" id="trialsSeg"><button data-v="5000">5.000</button><button data-v="10000" class="act">10.000</button><button data-v="50000">50.000</button></div></div>
+    </div>
+    <div class="progress" id="progress"><div class="bar" id="progressBar"></div></div>
+    <div class="test-results" id="testResults">
+      <div class="tr-top"><div class="tr-big"><div class="k">Resultado empírico</div><div class="v" id="empPass">—</div></div><div class="tr-cmp" id="trCmp"></div></div>
+      <div class="split-bar" id="splitBar"></div>
+      <div class="hist" id="hist"></div>
+      <div class="insight" id="insight"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EV PANEL -->
+<div class="panel glass hidden" id="panelEV">
+  <h2>📊 Esperanza matemática y ROI</h2>
+  <div class="lead">Combina la probabilidad de cada fase (con el modelo y la estrategia que tengas en cada pestaña) para calcular el valor esperado por examen comprado.</div>
+  <div class="hero-main"><div><div class="k">Esperanza por examen</div><div class="hero-val pos" id="heroEV">—</div></div><div class="hero-sub" id="heroSub"></div></div>
+  <div class="hero-stats">
+    <div class="stat"><div class="k">ROI esperado</div><div class="v" id="sRoi">—</div></div>
+    <div class="stat"><div class="k">P. ≥1 retiro</div><div class="v v-blue" id="sAny">—</div></div>
+    <div class="stat"><div class="k">EV bruto</div><div class="v v-green" id="sGross">—</div></div>
+    <div class="stat"><div class="k">Retiros esperados</div><div class="v v-blue" id="sExp">—</div></div>
+  </div>
+  <div class="subh">Cascada de probabilidades y valor esperado</div>
+  <table class="std"><thead><tr><th>Fase</th><th>Modelo</th><th class="num">P. fase</th><th class="num">P. acumulada</th><th class="num">Valor esperado</th></tr></thead><tbody id="cascadeBody"></tbody></table>
+  <div class="subh">Conclusión</div>
+  <div id="conclusion" style="font-size:14px;line-height:1.8"></div>
+  <div class="subh">Supuestos</div>
+  <ul class="assume" id="assumeList"></ul>
+</div>
+
+<footer>
+  <b>Trader Estadistico</b> · Ruina del jugador en juego justo. <b>Estático/bloqueado:</b> el beneficio crea colchón permanente → <span style="font-family:var(--mono)">P = B/(G+B)</span>. <b>Trailing:</b> la línea persigue tu pico y se bloquea en el inicio al generar el colchón; alcanzar el objetivo con esa guillotina móvil es mucho más difícil (EOD día-a-día <span style="font-family:var(--mono)">∏ DD/(g+DD)</span>; intradía continuo <span style="font-family:var(--mono)">e⁻¹·D/G</span>). <b>All-in:</b> un día malo te elimina → producto de días ganadores. Tras fondear, los retiros van contra el colchón ya bloqueado. Herramienta de análisis, no consejo de inversión.
+  <p style="margin-top:16px"><a href="./presentacion.html" target="_blank" rel="noopener noreferrer" style="color:var(--neon-br);font-weight:600" aria-label="Presentacion (abre en una pestaña nueva)">Presentacion</a></p>
+</footer>
+</div>
+
+<script>
+/* ===== UTILES ===== */
+const pStep=(g,r)=>g<=0?1:(r<=0?0:r/(g+r));
+// Trailing CONTINUO con bloqueo en el inicio (intradía): la línea persigue tick a tick.
+//   G<=D : e^(-G/D)        ·   G>D : e^(-1)*(D/G)
+const trailCont=(G,D)=>D<=0?0:(G<=D?Math.exp(-G/D):Math.exp(-1)*(D/G));
+const fmtMoney=v=>(v<0?'−':'')+'$'+Math.abs(Math.round(v)).toLocaleString('es-ES');
+const fmtPct=v=>(v*100).toFixed(1).replace('.',',')+'%';
+const fmtR=v=>v.toFixed(2).replace('.',',')+'R';
+const PHASES=['eval','pay1','pay2','pay3'];
+const PHASE_META={
+  eval:{label:'Aprobar examen',icon:'🎯'},
+  pay1:{label:'1.er retiro',icon:'①'},
+  pay2:{label:'2.º retiro',icon:'②'},
+  pay3:{label:'3.er retiro',icon:'③'}
+};
+
+/* ===== ESTADO ===== */
+const state={
+  accountSize:50000,target:3000,buyCost:98,resetCost:98,minDays:3,maxDays:0,
+  consEnabled:true,consistency:50,safety:3.3,
+  ddType:'eod',ddSize:2000,
+  dllEnabled:false,dllSize:1000,
+  bufferReq:2100,payoutAmount:2000,payoutMinDays:3,split:100,includeApprove:true,riskPerDay:0,
+  phases:{eval:{mode:'auto',days:[],recovery:'auto'},pay1:{mode:'auto',days:[],recovery:'auto'},pay2:{mode:'auto',days:[],recovery:'auto'},pay3:{mode:'auto',days:[],recovery:'auto'}},
+  activeTab:'eval', testTrials:10000,
+  hedge:{on:false, mode:'auto', nExams:3, manualV:0, instr:'NQ', contracts:1, round:false}
+};
+
+const firms={
+  lucidflex25:{name:'⭐ LucidFlex 25K — $50',s:{accountSize:25000,target:1250,buyCost:50,resetCost:0,minDays:2,maxDays:0,consEnabled:true,consistency:50,safety:3.3,ddType:'eod',ddSize:1000,dllEnabled:true,dllSize:600,bufferReq:1600,payoutAmount:1000,payoutMinDays:5,split:90,includeApprove:true,riskPerDay:0}},
+  doc:{name:'LucidFlex 50k - $90',s:{accountSize:50000,target:3000,buyCost:98,resetCost:98,minDays:3,maxDays:0,consEnabled:true,consistency:50,safety:3.3,ddType:'eod',ddSize:2000,dllEnabled:false,dllSize:1000,bufferReq:2100,payoutAmount:2000,payoutMinDays:3,split:100,includeApprove:true,riskPerDay:0}},
+  topstep:{name:'Topstep-style 50K (DLL)',s:{accountSize:50000,target:3000,buyCost:165,resetCost:0,minDays:2,maxDays:0,consEnabled:false,consistency:50,safety:3.3,ddType:'eod',ddSize:2000,dllEnabled:true,dllSize:1000,bufferReq:2600,payoutAmount:2000,payoutMinDays:5,split:90,includeApprove:true,riskPerDay:0}},
+  apex:{name:'Apex-style 100K (trailing)',s:{accountSize:100000,target:6000,buyCost:295,resetCost:0,minDays:7,maxDays:0,consEnabled:true,consistency:30,safety:5,ddType:'intraday',ddSize:3000,dllEnabled:false,dllSize:1000,bufferReq:3100,payoutAmount:2500,payoutMinDays:8,split:90,includeApprove:true,riskPerDay:0}},
+  intraday25:{name:'Intraday 25K + DLL',s:{accountSize:25000,target:1500,buyCost:89,resetCost:65,minDays:1,maxDays:30,consEnabled:false,consistency:50,safety:3.3,ddType:'intraday',ddSize:1500,dllEnabled:true,dllSize:500,bufferReq:1000,payoutAmount:1000,payoutMinDays:5,split:90,includeApprove:true,riskPerDay:0}},
+  static50:{name:'Static 50K sin DLL',s:{accountSize:50000,target:3000,buyCost:165,resetCost:99,minDays:1,maxDays:0,consEnabled:false,consistency:50,safety:3.3,ddType:'static',ddSize:2000,dllEnabled:false,dllSize:1000,bufferReq:2000,payoutAmount:1500,payoutMinDays:5,split:90,includeApprove:true,riskPerDay:0}}
+};
+let curFirm='lucidflex25';
+/* ===== PRESET INITIALIZATION ===== */
+function loadFirm(key){
+  curFirm=key;
+  Object.assign(state,firms[key].s);
+  PHASES.forEach(k=>{state.phases[k]={mode:'auto',days:[],recovery:'auto'};});
+  if(key==='lucidflex25'){
+    state.phases.pay1={mode:'manual',recovery:'auto',riskAuto:true,goal:2000,
+      days:[1600,100,100,100,100].map(g=>({g,r:600}))};
+    ['pay2','pay3'].forEach(k=>{
+      state.phases[k]={mode:'manual',recovery:'auto',riskAuto:true,
+        days:[600,100,100,100,100].map(g=>({g,r:600}))};
+    });
+  }
+}
+loadFirm(curFirm);
+/* ===== END PRESET INITIALIZATION ===== */
+
+/* ===== CONTEXTO DE FASE =====
+   Cuenta TRAILING: la línea persigue el pico hasta BLOQUEARSE en el inicio (cuando
+   generas el colchón). Modelado: kill = min(peak - B, lockKill), lockKill=0.
+   - eval / pay1 (construir): trailing con bloqueo (sim) en cuenta trailing; estático si no.
+   - pay2 / pay3: colchón ya generado y línea BLOQUEADA -> estático. buffer = colchón
+     (trailing) o colchón + drawdown (cuenta estática).
+*/
+function phaseCtx(key,s){
+  const isBuf=(key==='pay2'||key==='pay3');
+  const D=s.ddSize, C=(isBuf && Number.isFinite(s.phases.pay1.goal) && s.phases.pay1.goal>0) ? Math.max(0,s.phases.pay1.goal-s.payoutAmount) : s.bufferReq, accTrailing=(s.ddType==='eod'||s.ddType==='intraday');
+  const dll = s.dllEnabled&&s.dllSize>0 ? Math.min(s.dllSize,D) : 0;
+  const ov=s.phases[key].recovery;
+  let G,B,model,lockKill=0;
+  if(key==='eval') G=s.target; else if(key==='pay1') G=C+s.payoutAmount; else G=s.payoutAmount;
+  if(key==='pay1' && Number.isFinite(s.phases.pay1.goal) && s.phases.pay1.goal>0) G=s.phases.pay1.goal;
+
+  if(isBuf){
+    model = (ov==='aggressive')?'aggressive':'static';
+    B = accTrailing ? C : (C+D);   // trailing bloqueado: line en inicio -> buffer=colchón; estática: colchón+DD
+    lockKill = 0;
+  } else {
+    if(ov && ov!=='auto') model=ov; else model = accTrailing ? 'trailing' : 'static';
+    B = D; lockKill = 0;
+  }
+  // pérdida diaria L
+  let L;
+  if(model==='aggressive') L=B;
+  else if(dll>0) L=dll;
+  else if(s.riskPerDay>0) L=Math.min(s.riskPerDay,B);
+  else L=Math.max(1,Math.round(D/2));
+  const intraday=s.ddType==='intraday';
+  // motivo
+  let why;
+  if(isBuf) why = accTrailing
+    ? 'Colchón ya generado y línea BLOQUEADA en el inicio: retiras lo que supere el colchón. Buffer = colchón → C/(payout+C).'
+    : 'Cuenta estática: el colchón se suma al drawdown. Buffer = colchón + DD → (C+D)/(payout+C+D).';
+  else if(model==='static' && !accTrailing) why='Drawdown ESTÁTICO: la línea no se mueve con tus ganancias, recuperas → B/(G+B).';
+  else if(model==='trailing') why = key==='pay1'
+    ? 'Construyes el colchón con la línea TRAILING (lo más peligroso); al alcanzarlo la línea se BLOQUEA y el resto del payout ya es contra colchón fijo.'
+    : 'Cuenta TRAILING'+(intraday?' (intradía)':'')+': la línea persigue tu pico y se bloquea en el inicio. Devolver ganancias antes de llegar te saca.';
+  else if(model==='static') why='Forzado a estático: la línea no se mueve.';
+  else if(model==='aggressive') why='All-in: arriesgas todo el buffer en un día.';
+  return {key,B,G,model,lockKill,L,dll,accTrailing,intraday,isBuf,C,D,why};
+}
+
+/* ===== PLAN DE DÍAS ===== */
+function autoDays(key,s,c){
+  const consOn = key==='eval'&&s.consEnabled&&s.consistency>0;
+  // ===== TRAILING EOD: plan de REFERENCIA (fórmula día-a-día) =====
+  // P = ∏ DD/(g+DD). Menos días = más probabilidad, así que se usan los mínimos
+  // que permite la consistencia. En el 1.er retiro: 1 día construye el colchón
+  // (trailing vivo) y otro extrae el payout (línea aún sin bloquear).
+  if(c.model==='trailing' && !c.intraday){
+    // Riesgo/día:
+    //  · CON tope (DLL/riesgo-día): r = tope → el simulador hace el paseo multi-día.
+    //  · SIN tope (all-in): r = el MÁXIMO = tu distancia a la muerte. Construyendo = drawdown (B);
+    //    una vez generado el colchón (línea bloqueada en el inicio) = el colchón (C).
+    const cap = c.dll>0 ? c.dll : (s.riskPerDay>0 ? Math.min(s.riskPerDay,c.B) : 0);
+    const hasCap = cap>0 && cap<c.B;
+    const rBuild   = hasCap ? Math.round(cap) : Math.round(c.B);              // construyendo → drawdown
+    const rCushion = hasCap ? Math.round(cap) : Math.round(Math.max(c.B, c.C||0)); // colchón hecho → colchón
+    let days=[];
+    if(key==='pay1' && c.C>0 && (c.G-c.C)>0){
+      // Día 1 genera el colchón con la línea viva (riesgo = drawdown); a partir de ahí la línea se
+      // BLOQUEA y el resto del payout va contra colchón fijo (riesgo = colchón).
+      days=[{g:Math.round(c.C),r:rBuild},{g:Math.round(c.G-c.C),r:rCushion}];
+    } else {
+      const capRaw = consOn ? (s.consistency/100)*c.G : c.G;   // sin margen de seguridad → nº de días
+      const N=Math.max(1,Math.ceil(c.G/Math.max(1,capRaw)));
+      const g=c.G/N;
+      for(let i=0;i<N;i++) days.push({g:Math.round(g),r:rBuild});
+    }
+    const minDt=key==='eval'?Math.max(1,s.minDays):Math.max(1,s.payoutMinDays||1);
+    const rCoast = days.length ? days[days.length-1].r : rBuild;
+    while(days.length<minDt) days.push({g:0,r:rCoast});   // días "coast": g=0 → P=1, no penalizan
+    return days;
+  }
+  const cap = consOn ? (s.consistency/100)*c.G*(1-s.safety/100) : c.G;
+  let chunk;
+  if(c.model==='static'){ chunk=Math.min(cap, Math.max(c.L, c.G/(key==='eval'?Math.max(1,s.minDays):3))); }
+  else if(c.model==='trailing'){ chunk=Math.min(cap, c.L); }   // g≈L es casi óptimo en trailing
+  else { chunk=Math.min(cap, c.B*0.725); }                     // agresivo: concentrar
+  chunk=Math.max(1,chunk);
+  // Riesgo/día: agresivo = todo el buffer. Resto: sin tope → el MÁXIMO = B (en fondeado B ya es el
+  // colchón, así que r = colchón); con tope (DLL/riesgo-día) → el tope.
+  const capR = c.dll>0 ? c.dll : (s.riskPerDay>0 ? Math.min(s.riskPerDay,c.B) : 0);
+  const r = c.model==='aggressive' ? Math.round(c.B) : Math.round(capR>0 && capR<c.B ? capR : c.B);
+  let days=[],rem=c.G,guard=0;
+  while(rem>chunk+1e-6&&guard<80){days.push({g:Math.round(chunk),r});rem-=chunk;guard++;}
+  if(rem>1e-6)days.push({g:Math.round(rem),r});
+  const minD=key==='eval'?Math.max(1,s.minDays):Math.max(1,s.payoutMinDays||1);
+  while(days.length<minD)days.push({g:0,r});
+  return days;
+}
+function patternDays(name,key,s,c){
+  const capR = c.dll>0 ? c.dll : (s.riskPerDay>0 ? Math.min(s.riskPerDay,c.B) : 0);
+  const r = c.model==='aggressive' ? Math.round(c.B) : Math.round(capR>0 && capR<c.B ? capR : c.B);
+  const N=Math.max(1,key==='eval'?s.minDays:3), T=c.G;
+  if(name==='optima')return autoDays(key,s,c);
+  if(name==='plano')return Array.from({length:N},()=>({g:Math.round(T/N),r}));
+  if(name==='frontal'){const lim=key==='eval'&&s.consEnabled&&s.consistency>0?(s.consistency/100)*T*0.97:T;const f=Math.min(T,lim);const rest=Math.max(0,T-f);const d=[{g:Math.round(f),r}];for(let i=1;i<N;i++)d.push({g:Math.round(rest/(N-1)),r});return d;}
+  if(name==='escalera'){let w=[];for(let i=0;i<N;i++)w.push(N-i);const sum=w.reduce((a,b)=>a+b,0);return w.map(x=>({g:Math.round(T*x/sum),r}));}
+  return autoDays(key,s,c);
+}
+// Riesgo/día AUTOMÁTICO = tu distancia real a la muerte al inicio de cada día.
+//  · Con tope (DLL/riesgo-día): el tope.
+//  · Sin tope (all-in): max(drawdown, colchón acumulado). Tras generar objetivo, la línea se bloquea
+//    en el inicio y tu colchón = todo lo acumulado → el riesgo sube solo (p.ej. 2000 → 3300).
+function autoRiskDays(days,c,s){
+  const cap = c.dll>0 ? c.dll : (s.riskPerDay>0 ? Math.min(s.riskPerDay,c.B) : 0);
+  const hasCap = cap>0 && cap<c.B;
+  let cum=0;
+  return days.map(d=>{
+    const r = hasCap ? Math.round(cap) : Math.round(Math.max(c.B, cum));
+    cum += (d.g||0);
+    return {g:d.g, r};
+  });
+}
+function activeDays(key,s,c){
+  const ph=s.phases[key];
+  let days = (ph.mode==='manual'&&ph.days.length) ? ph.days.map(d=>({...d})) : autoDays(key,s,c);
+  if(ph.riskAuto!==false) days = autoRiskDays(days,c,s);   // riesgo auto por defecto
+  return days;
+}
+
+/* ===== RNG SEMILLA (titulares estables) ===== */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+/* ===== UNA TIRADA (común a titular y botón) =====
+   model: static (línea fija -B) | trailing (línea = min(pico-B, lockKill)) | aggressive (1 día malo = fuera)
+   intradía: la línea persigue el máximo DENTRO del día (sub-paseo) -> más duro que EOD.
+*/
+function runTrial(c,days,minD,maxD,rng){
+  // intradía: trailing continuo (la línea persigue dentro del día).
+  if(c.model==='trailing' && c.intraday){
+    const step=Math.max(c.G,c.B)/120; let v=0,peak=0,steps=0;
+    const dt=(days[0]&&days[0].g>0)?days[0].g:Math.max(1,c.G/3);
+    while(steps<400000){
+      v+=(rng()<.5?-1:1)*step; steps++;
+      if(v>peak)peak=v;
+      if(v<=Math.min(peak-c.B,c.lockKill||0)+1e-9) return {res:-1,day:Math.max(1,Math.min(60,Math.ceil(peak/dt)))};
+      if(v>=c.G-1e-9) return {res:1,day:Math.max(1,Math.ceil(c.G/dt))};
+    }
+    return {res:0,day:1};
+  }
+  // último día de trading REAL (g>0): se repite en el paseo más allá del plan.
+  // Repetir un día coast (g=0) atascaría el paseo sin poder recuperar tras una pérdida.
+  let lastReal=null;
+  for(let i=days.length-1;i>=0;i--){ if(days[i]&&days[i].g>0){ lastReal=days[i]; break; } }
+  if(!lastReal) lastReal={g:Math.max(1,Math.round(c.G*0.03)),r:c.L};
+  let eq=0,peak=0,day=0,idx=0;
+  while(day<maxD){
+    const d = idx<days.length ? days[idx] : lastReal;
+    let g=d.g, L=d.r>0?d.r:c.L;
+    if(eq>=c.G && day<minD) g=Math.max(1,Math.round(c.G*0.03)); // "coast" hasta días mínimos
+    day++;
+    if(g>0){
+      if(c.model==='aggressive'){
+        if(rng()<pStep(g,L)){ eq+=g; } else { eq=-c.B-1; }   // all-in: 1 día malo = fuera
+      } else {
+        // sin overshoot: el día no puede perder más allá de la línea de muerte ni ganar más
+        // allá del objetivo. Así estático = B/(G+B) exacto y el trailing nunca supera al estático.
+        const kill0 = c.model==='trailing' ? Math.min(peak-c.B, c.lockKill||0) : -c.B;
+        const downBar=Math.max(1, Math.min(L, eq-kill0));
+        const upBar=Math.max(1, eq<c.G ? Math.min(g, c.G-eq) : g);
+        if(rng()<pStep(upBar,downBar)){ eq+=upBar; } else { eq-=downBar; }
+      }
+    }
+    if(eq>peak)peak=eq;
+    const kill = c.model==='trailing' ? Math.min(peak-c.B, c.lockKill||0) : -c.B;
+    if(eq<=kill+1e-9) return {res:-1,day};
+    if(eq>=c.G-1e-9 && day>=minD) return {res:1,day};
+    idx++;
+  }
+  return {res:0,day};
+}
+function phaseSimCore(c,days,minD,maxD,trials,rng){
+  let pass=0; const failDay={};
+  for(let t=0;t<trials;t++){const o=runTrial(c,days,minD,maxD,rng);if(o.res===1)pass++;else if(o.res===-1)failDay[o.day]=(failDay[o.day]||0)+1;}
+  return {passRate:pass/trials, failDay};
+}
+function minMaxDays(key,s){return {minD:key==='eval'?Math.max(1,s.minDays):Math.max(1,s.payoutMinDays||1), maxD:key==='eval'&&s.maxDays>0?s.maxDays:800};}
+
+/* ===== PROBABILIDAD DE FASE ===== */
+// RIESGO MANUAL en fase estática = stop autoimpuesto: tu "ruina" ya no es quemar el colchón
+// entero sino tu tope de riesgo. Buffer efectivo B = ese riesgo (máx del plan), capado al colchón.
+function effBuffer(c,days,ph){
+  if(c.model!=='static'||!ph||ph.riskAuto!==false) return c.B;
+  const maxR=days.reduce((m,d)=>Math.max(m,d.r||0),0);
+  return maxR>0?Math.min(c.B,Math.round(maxR)):c.B;
+}
+function phaseProb(key,s){
+  const c=phaseCtx(key,s);
+  const days=activeDays(key,s,c);
+  const {minD,maxD}=minMaxDays(key,s);
+  const ph=s.phases[key];
+  const Beff=effBuffer(c,days,ph);
+  const staticP=Beff/(c.G+Beff);      // con riesgo manual: B = tu stop, no todo el colchón
+  const staticRaw=c.B/(c.G+c.B);      // buffer completo (techo físico del trailing)
+  const aggDays=(ph.mode==='manual'&&ph.days.length)?days:autoDays(key,s,{...c,model:'aggressive',L:c.B});
+  let aggP=1; aggDays.forEach(d=>{aggP*=pStep(d.g,c.B);});
+  const tr=c.intraday?6000:9000;
+  // tope de pérdida diaria efectivo (DLL o riesgo/día). 0 = sin tope.
+  const dailyCap = c.dll>0 ? c.dll : (s.riskPerDay>0 ? Math.min(s.riskPerDay,c.B) : 0);
+  function trailP(){
+    if(c.intraday) return trailCont(c.G,c.B);          // intradía: tick-a-tick continuo
+    // Producto con el riesgo REAL de cada día (la distancia a la línea de muerte crece con el
+    // colchón, por eso puede superar el drawdown inicial). Coincide con la columna PROB. DÍA.
+    let prodCol=1; days.forEach(d=>{ if(d.g>0) prodCol*=pStep(d.g, d.r>0?d.r:c.B); });
+    if(dailyCap>0 && dailyCap<c.B){
+      // CON DLL: la probabilidad sale de la SIMULACIÓN real (paseo de supervivencia multi-día con
+      // el DLL como pérdida diaria), no de una fórmula. Días coast fuera para poder recuperar.
+      // Semilla fija → estable. Techo físico: el trailing no puede superar al estático.
+      const realDays=days.filter(d=>d.g>0);
+      const simDays=(realDays.length?realDays:days).map(d=>({g:d.g,r:dailyCap}));
+      const sim=phaseSimCore({...c,model:'trailing',L:dailyCap},simDays,minD,maxD,20000,mulberry32(13579)).passRate;
+      return Math.min(sim, staticRaw);
+    }
+    return prodCol;
+  }
+  let p, trailingP=null;
+  if(c.model==='static'){ p=staticP; }
+  else if(c.model==='aggressive'){ p=aggP; }
+  else { trailingP=trailP(); p=trailingP; }
+  if(trailingP===null) trailingP=trailP();
+  return {c,days,p,staticP,aggP,trailingP,Beff};
+}
+
+/* ===== EV ===== */
+function computeEV(s){
+  const pe=phaseProb('eval',s), p1=phaseProb('pay1',s), p2=phaseProb('pay2',s), p3=phaseProb('pay3',s);
+  const base=s.includeApprove?pe.p:1;
+  const c1=base*p1.p, c2=c1*p2.p, c3=c2*p3.p;
+  const net=s.payoutAmount*(s.split>0?s.split/100:1);
+  const ve=[net*c1,net*c2,net*c3], evGross=ve[0]+ve[1]+ve[2], evNet=evGross-s.buyCost, roi=s.buyCost>0?evNet/s.buyCost*100:0;
+  return {pe,p1,p2,p3,c1,c2,c3,net,ve,evGross,evNet,roi,exp:c1+c2+c3};
+}
+
+/* ===== SIMULACIÓN PARA EL BOTÓN (chunked, Math.random) ===== */
+function simPhase(key,s,trials){
+  const c=phaseCtx(key,s);
+  const days=activeDays(key,s,c);
+  const BeffS=effBuffer(c,days,s.phases[key]);
+  if(BeffS<c.B){ c.B=BeffS; c.L=Math.min(c.L,BeffS); }   // stop autoimpuesto = tu línea de muerte
+  const {minD,maxD}=minMaxDays(key,s);
+  return {c,days,run:(onChunk,onDone)=>{
+    let done=0,pass=0; const failDay={};
+    function chunk(){
+      const end=Math.min(done+(c.intraday?300:800),trials);
+      for(;done<end;done++){const o=runTrial(c,days,minD,maxD,Math.random);if(o.res===1)pass++;else if(o.res===-1)failDay[o.day]=(failDay[o.day]||0)+1;}
+      onChunk(pass,done,trials);
+      if(done<trials)requestAnimationFrame(chunk); else onDone(pass,trials,failDay);
+    }
+    requestAnimationFrame(chunk);
+  }};
+}
+
+
+/* ===== HEDGE CON CAPITAL REAL =====
+   Idea: la fondeada muere cuando pierde B (tu buffer o tu stop manual). Una COPIA INVERSA en
+   real con ratio h hace que al morir la real gane h·B. Para recuperar un valor V: h = V/B.
+   Coste si apruebas: h·G (la real pierde mientras la fondeada sube). En juego justo el EV del
+   seguro es 0 exacto: (1-p)·hB - p·hG = 0 con p=B/(G+B). No cambia tu esperanza: mata la varianza. */
+const HEDGE_INSTR={NQ:{name:'NQ',pv:20,micro:'MNQ',mpv:2},ES:{name:'ES',pv:50,micro:'MES',mpv:5},MNQ:{name:'NQ',pv:20,micro:'MNQ',mpv:2},MES:{name:'ES',pv:50,micro:'MES',mpv:5}};
+const hedgeFam=()=>HEDGE_INSTR[(state.hedge.instr==='ES'||state.hedge.instr==='MES')?'ES':'NQ'];
+const nfm2=v=>v.toFixed(2).replace('.',',');
+// Coste esperado de VOLVER al inicio de cada fase si mueres hoy (reposición).
+// Cadena: F = coste de refondear = reset/p_eval; R_{k+1} = R_k/p_k − payout neto cobrado al pasar k.
+function hedgeRepl(ev){
+  const cost=state.resetCost>0?state.resetCost:state.buyCost;
+  const F=ev.pe.p>0?cost/ev.pe.p:NaN;
+  const R2raw=ev.p1.p>0?F/ev.p1.p-ev.net:NaN;
+  const R3raw=ev.p2.p>0?R2raw/ev.p2.p-ev.net:NaN;
+  return {cost,F,raw:{eval:cost,pay1:F,pay2:R2raw,pay3:R3raw}};
+}
+function hedgeCalc(key,pr,ev){
+  const h=state.hedge, c=pr.c;
+  const Beff=(pr.Beff&&pr.Beff>0)?pr.Beff:c.B, G=c.G;
+  const rep=hedgeRepl(ev);
+  const exams=Math.max(1,Math.round(h.nExams)||1);
+  let V, vLabel, vNote='', autoN=1;
+  if(h.mode==='auto'){
+    const Pprev = key==='eval'?1 : key==='pay1'?ev.pe.p : key==='pay2'?ev.pe.p*ev.p1.p : ev.pe.p*ev.p1.p*ev.p2.p;
+    autoN = Pprev>0 ? 1/Pprev : NaN;
+    if(isFinite(autoN)){ V=rep.cost*autoN; vLabel=`el valor del examen aquí (${nfm2(autoN)} exámenes)`; }
+    else { V=0; vNote='Con probabilidad 0 en una fase previa el valor es infinito: usa «Lo gastado» o «Manual».'; vLabel='el valor del examen'; }
+  }
+  else if(h.mode==='exam'){ V=rep.cost; vLabel='el examen'; }
+  else if(h.mode==='spent'){ V=state.buyCost+(exams-1)*rep.cost; vLabel=exams>1?`los ${exams} exámenes que llevas`:'el examen que llevas'; }
+  else if(h.mode==='repl'){
+    const raw=rep.raw[key]; V=isFinite(raw)?Math.max(0,raw):0;
+    vLabel='la reposición de esta fase';
+    if(isFinite(raw)&&raw<0) vNote=`Los payouts que cobrarías por el camino ya pagan la vuelta hasta aquí (coste esperado ${fmtMoney(raw)}): no hay nada que cubrir. Usa «Lo gastado» si quieres cubrir lo ya pagado.`;
+    if(!isFinite(raw)) vNote='Con probabilidad 0 en una fase previa la reposición es infinita: cubre con «Lo gastado» o «Manual».';
+  }
+  else { V=Math.max(0,h.manualV||0); vLabel='tu valor objetivo'; }
+  const I=hedgeFam(), fam=I.name;
+  const nC=Math.max(1,Math.round(h.contracts)||1);      // MINIS en la fondeada
+  const round=!!h.round;
+  const dCap=c.dll>0?c.dll:(state.riskPerDay>0?Math.min(state.riskPerDay,c.B):0);
+  const perDay=c.model==='aggressive'||(c.model==='trailing'&&!c.intraday&&dCap<=0);
+  let rows=[], costTotal=0, Ppass=1;
+  if(perDay&&V>0){
+    // MISMO MOVIMIENTO: la fondeada mueve r/(nC·pv) puntos hasta la ruina del día; los micros
+    // exactos son los que en ese mismo movimiento pagan H. mEx = (H/r)·nC·pv/mpv (con decimales).
+    // Redondear ↑ = micros enteros al alza: cobras algo MÁS al morir y pagas algo más al ganar.
+    // La cadena usa el coste REAL puesto (redondeado o no): sales en paz siempre.
+    let Preach=1, cum=0, dn=0;
+    pr.days.forEach(d=>{
+      if(!(d.g>0))return;
+      dn++;
+      const r=d.r>0?d.r:c.L, p=pStep(d.g,r);
+      const H=V+cum;                                    // objetivo: V + lo realmente palmado
+      const mEx=(H/r)*nC*I.pv/I.mpv;
+      const mUp=Math.max(1,Math.ceil(mEx-1e-9));
+      // pago real de m micros cuando la fondeada mueve $x: m·mpv·x/(nC·pv)  (mismos puntos)
+      const paid = round? mUp*I.mpv*r/(nC*I.pv) : H;
+      const X   = round? mUp*I.mpv*d.g/(nC*I.pv) : H*d.g/r;
+      rows.push({dn,g:d.g,r,p,Preach,H,mEx,mUp,pay:paid,X});
+      cum+=X; Preach*=p;
+    });
+    costTotal=cum; Ppass=Preach;
+  }
+  const ratio=Beff>0?V/Beff:0;
+  const microsExact=ratio*nC*I.pv/I.mpv;
+  const microsUp=V>0?Math.max(1,Math.ceil(microsExact-1e-9)):0;
+  const ratioEff = V>0 ? (round? microsUp*I.mpv/(nC*I.pv) : ratio) : 0;
+  const payDeath=ratioEff*Beff, costPass=ratioEff*G;
+  return {V,vLabel,vNote,autoN,perDay,rows,costTotal,Ppass,round,ratio,ratioEff,microsExact,microsUp,payDeath,costPass,Beff,G,I,fam,nC,rep,c};
+}
+function hedgeOutHTML(key,pr,ev){
+  const H=hedgeCalc(key,pr,ev), c=H.c;
+  const pctR=v=>(v*100).toFixed(1).replace('.',',')+'%';
+  if(H.V<=0) return `<div class="note-recov" style="margin-top:12px">Nada que cubrir: el valor a recuperar es $0. ${H.vNote||''}</div>`;
+  const evNote=`<div class="note-recov">⚖️ En juego justo el EV del seguro es <b>$0 exacto</b>: no cambia tu esperanza matemática, elimina la varianza — cambias «a veces pierdo el examen» por «siempre cobro un poco menos». En la práctica pagas comisiones y slippage por partida doble.</div>`;
+  const modeNote = H.round
+    ? `<div class="note-recov">Micros <b>redondeados ↑</b>: nunca te quedas corto — al morir cobras lo de la fila (≥ objetivo) y el sobrante juega a tu favor. La cadena de días ya descuenta el coste real de los micros enteros.</div>`
+    : `<div class="note-recov">Micros <b>exactos con decimales</b>: es el movimiento equivalente exacto (misma distancia en puntos, tamaño proporcional). Si tu bróker no admite fracciones, pulsa «Redondear ↑».</div>`;
+  if(H.perDay){
+    const maxM = H.rows.length? Math.max(...H.rows.map(x=>x.mUp)) : 0;
+    return `
+    <div class="hedge-trade">
+      <div class="k">Cobertura día a día — incrustada en tu plan de arriba 👆</div>
+      <div class="sub" style="margin-top:6px">Columnas <b style="color:var(--green)">🛡️ Real (inverso)</b> y <b style="color:var(--green)">Si muere, cobras</b> del plan: cada día, el trade CONTRARIO a tus <b>${H.nC} ${H.fam} (minis)</b> con esos <b>${H.I.micro}</b> en real. Es el mismo movimiento en puntos: si la fondeada pierde el riesgo del día, la real te paga <b>el valor del examen de ese día</b>. ${state.hedge.mode==='auto'&&isFinite(H.autoN)?`Al empezar esta fase vale <b>${nfm2(H.autoN)} exámenes</b> = ${fmtMoney(H.V)}, y`:`Empieza en ${fmtMoney(H.V)} y`} cada día que sobrevives vale más: V(día) = V ÷ P(llegar). Mueras el día que mueras, sales en paz.</div>
+    </div>
+    <div class="hedge-esc">
+      <div>🟢 Apruebas la fase (P = ${pctR(H.Ppass)}) → el seguro total te ha costado <b class="r m">−${fmtMoney(H.costTotal)}</b>${key!=='eval'?` (payout ${fmtMoney(ev.net)} → <b class="m">${fmtMoney(ev.net-H.costTotal)}</b> netos)`:` ≈ V·(1/P − 1): el precio justo de no perder nunca el examen`}.</div>
+      <div>🔴 Mueres el día que sea → cobras lo de su fila${H.round?' (≥ objetivo: el redondeo ↑ sobra a tu favor)':' (el valor exacto del examen ese día)'}: la fila ya descuenta lo palmado antes.</div>
+      <div>💰 Capital real mínimo ≈ <b class="m">${fmtMoney(H.costTotal)}</b> + margen intradía de ${H.round?maxM+' '+H.I.micro:nfm2(H.rows.length?Math.max(...H.rows.map(x=>x.mEx)):0)+' '+H.I.micro}.</div>
+    </div>
+    ${modeNote}
+    ${H.vNote?`<div class="note-recov">${H.vNote}</div>`:''}
+    ${evNote}`;
+  }
+  // ----- barrera fija (estático / recuperas / DLL / intradía) -----
+  const isPay=key!=='eval';
+  const bigM = H.round? `${H.microsUp} ${H.I.micro}` : `${nfm2(H.microsExact)} ${H.I.micro}`;
+  const overNote = H.round&&H.ratio>0? ` Sobre-cobertura del redondeo: ${pctR(H.ratioEff/H.ratio-1)} a tu favor.`:'';
+  const whyStatic=c.model==='static'?`<div class="note-recov">Aquí NO hace falta escalar el hedge por días: recuperas de los días malos y solo mueres al caer <b>${fmtMoney(H.Beff)}</b> acumulados desde el inicio. Un espejo constante paga ${H.round?'al menos':''} ${fmtMoney(H.V)} en la ruina, sea el día que sea.</div>`:'';
+  const trailWarn=(c.model==='trailing')?`<div class="note-recov" style="border-color:rgba(255,157,61,.4)">⚠️ Trailing con tope diario${c.intraday?' / intradía':''}: mueres tras un paseo de varios días y la línea se mueve — el espejo constante es una aproximación. Para cobertura exacta usa el régimen por días (sin DLL) o un stop de riesgo manual en estático.</div>`:'';
+  return `
+  <div class="hedge-trade">
+    <div class="k">El trade en tu cuenta real</div>
+    <div class="big">↔️ ${bigM} en sentido contrario</div>
+    <div class="sub">Espejo INVERSO constante toda la fase: por cada trade de <b>${H.nC} ${H.fam} (minis)</b> en la fondeada, el contrario con <b>${bigM}</b> en real${H.round?` <span style="color:var(--faint)">(exactos: ${nfm2(H.microsExact)})</span>`:''}. Mismo movimiento en puntos, ratio <b>${pctR(H.ratioEff)}</b> = V/B = ${fmtMoney(H.V)}/${fmtMoney(H.Beff)}.${overNote}</div>
+  </div>
+  <div class="hedge-esc">
+    <div>🔴 La fondeada muere (−${fmtMoney(H.Beff)} desde el inicio) → tu real gana ${H.round?'≥':'≈'} <b class="g m">+${fmtMoney(H.payDeath)}</b>: recuperas ${H.vLabel}${state.hedge.mode==='auto'&&isFinite(H.autoN)&&H.autoN>1?` — aquí el examen ya no vale 1: vale ${nfm2(H.autoN)} porque de media se queman esos para volver a esta fase`:''}.</div>
+    <div>🟢 Pasas la fase (+${fmtMoney(H.G)}) → el seguro te cuesta <b class="r m">−${fmtMoney(H.costPass)}</b>${isPay?` (payout ${fmtMoney(ev.net)} → <b class="m">${fmtMoney(ev.net-H.costPass)}</b> netos)`:''}.</div>
+    <div>💰 Capital real mínimo ≈ <b class="m">${fmtMoney(H.costPass)}</b> + margen intradía de ${bigM}.</div>
+  </div>
+  ${whyStatic}
+  ${modeNote}
+  ${H.vNote?`<div class="note-recov">${H.vNote}</div>`:''}
+  ${evNote}
+  ${trailWarn}`;
+}
+function hedgeCtlHTML(key,pr,ev){
+  const h=state.hedge, I=hedgeFam(), fam=I.name;
+  const chip=(v,l,cur,attr)=>`<button class="chip sm ${cur===v?'act':''}" data-${attr}="${v}">${l}</button>`;
+  const rep=hedgeRepl(ev);
+  const rraw=rep.raw[key], rTxt=isFinite(rraw)?fmtMoney(Math.max(0,rraw)):'∞';
+  return `
+  <div class="hrow"><span class="lbl">Qué recuperas si mueres</span><div style="display:flex;gap:7px;flex-wrap:wrap">
+    ${chip('auto','Valor del examen (auto)',h.mode,'hm')}${chip('exam','Este examen ('+fmtMoney(rep.cost)+')',h.mode,'hm')}${chip('spent','Lo gastado',h.mode,'hm')}${chip('repl','Reposición ('+rTxt+')',h.mode,'hm')}${chip('manual','Manual',h.mode,'hm')}
+  </div></div>
+  ${h.mode==='spent'?`<div class="hrow"><span class="lbl">Exámenes quemados hasta hoy</span><input id="hN" type="number" min="1" step="1" value="${h.nExams}"> <span style="font-size:11px;color:var(--faint)">1.º a precio de compra (${fmtMoney(state.buyCost)}), el resto a reset (${fmtMoney(state.resetCost>0?state.resetCost:state.buyCost)})</span></div>`:''}
+  ${h.mode==='manual'?`<div class="hrow"><span class="lbl">Valor a cubrir ($)</span><input id="hV" type="number" min="0" step="10" value="${h.manualV}"></div>`:''}
+  <div class="hrow"><span class="lbl">Minis en la fondeada</span><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+    <input id="hC" type="number" min="1" step="1" value="${h.contracts}" style="width:64px"> ×
+    ${chip('NQ','NQ (mini)',fam,'hi')}${chip('ES','ES (mini)',fam,'hi')}
+    <span style="font-size:11px;color:var(--faint)">→ en real cubres con ${I.micro} (mismo movimiento, 1 ${fam} = ${I.pv/I.mpv} ${I.micro})</span>
+  </div></div>
+  <div class="hrow"><span class="lbl">Micros en real</span><div class="seg">
+    <button data-hr="0" class="${!h.round?'act':''}">Exactos (con decimales)</button><button data-hr="1" class="${h.round?'act':''}">Redondear ↑</button>
+  </div></div>`;
+}
+function renderHedge(key,pr,ev){
+  const box=document.getElementById('hedgeBox'); if(!box)return;
+  if(key==='ev'){box.style.display='none';return;}
+  box.style.display='';
+  const on=!!state.hedge.on;
+  document.getElementById('hedgeOn').checked=on;
+  document.getElementById('hedgeTeaser').style.display=on?'none':'';
+  document.getElementById('hedgeBody').style.display=on?'':'none';
+  if(!on)return;
+  document.getElementById('hedgeCtl').innerHTML=hedgeCtlHTML(key,pr,ev);
+  document.getElementById('hedgeOut').innerHTML=hedgeOutHTML(key,pr,ev);
+}
+function hedgeRefresh(full){
+  const key=state.activeTab; if(key==='ev')return;
+  const ev=computeEV(state);
+  const pr=key==='eval'?ev.pe:key==='pay1'?ev.p1:key==='pay2'?ev.p2:ev.p3;
+  if(full) renderHedge(key,pr,ev);
+  else document.getElementById('hedgeOut').innerHTML=hedgeOutHTML(key,pr,ev);
+  updateHedgeCells(key,pr,ev,pr.days);
+}
+
+/* ===== RENDER GLOBAL ===== */
+function render(){
+  const ev=computeEV(state);
+  // tabs
+  document.getElementById('tabbar').innerHTML=
+    PHASES.map(k=>{const pp=k==='eval'?ev.pe:k==='pay1'?ev.p1:k==='pay2'?ev.p2:ev.p3;
+      return `<div class="tab ${state.activeTab===k?'act':''}" data-tab="${k}"><div class="tt">${PHASE_META[k].icon} ${PHASE_META[k].label}</div><div class="tp">${fmtPct(pp.p)}</div></div>`;}).join('')
+    +`<div class="tab ev ${ev.evNet<0?'neg':''} ${state.activeTab==='ev'?'act':''}" data-tab="ev"><div class="tt">📊 EV & ROI</div><div class="tp">${fmtMoney(ev.evNet)}</div></div>`;
+  document.querySelectorAll('#tabbar .tab').forEach(t=>t.addEventListener('click',()=>{state.activeTab=t.dataset.tab;render();}));
+
+  const isEV=state.activeTab==='ev';
+  document.getElementById('panelPhase').classList.toggle('hidden',isEV);
+  document.getElementById('panelEV').classList.toggle('hidden',!isEV);
+  if(isEV) renderEV(ev); else renderPhase(state.activeTab, ev);
+}
+
+function renderPhase(key,ev){
+  // Reusa el MISMO objeto que el tab (ev) para que detalle y pestaña sean idénticos por construcción
+  // y no se recalcule la simulación dos veces. Si no llega ev (llamada suelta), calcula.
+  const pr = ev ? (key==='eval'?ev.pe:key==='pay1'?ev.p1:key==='pay2'?ev.p2:ev.p3) : phaseProb(key,state);
+  const c=pr.c;
+  // El paseo aleatorio y la simulación solo tienen sentido CON DLL (proceso de supervivencia
+  // multi-día). Sin DLL es all-in (aprueba o quema en 1-2 días) y no hay paseo que mostrar.
+  const dCap = c.dll>0 ? c.dll : (state.riskPerDay>0 ? Math.min(state.riskPerDay,c.B) : 0);
+  const showSim = dCap>0;
+  const vizB=document.getElementById('vizBox'), testB=document.getElementById('testBox');
+  if(vizB) vizB.style.display = showSim?'':'none';
+  if(testB) testB.style.display = showSim?'':'none';
+  document.getElementById('phTitle').textContent=`${PHASE_META[key].icon} ${PHASE_META[key].label}`;
+  const leads={
+    eval:'Objetivo: alcanzar el target de beneficio antes de tocar el drawdown total.',
+    pay1:'Objetivo: desde la cuenta fondeada, generar el colchón y el primer importe a retirar.',
+    pay2:'Objetivo: con el colchón ya retenido, sumar otro importe para el segundo retiro.',
+    pay3:'Objetivo: repetir la extracción para el tercer retiro, protegiendo el colchón.'
+  };
+  document.getElementById('phLead').textContent=leads[key];
+
+  const Beff=(pr.Beff&&pr.Beff>0)?pr.Beff:c.B, hasStop=c.model==='static'&&Beff<c.B;
+  document.getElementById('phCtx').innerHTML=`
+    <div class="ctxitem"><div class="k">Objetivo (G)</div><div class="v v-green">+${fmtMoney(c.G)}</div></div>
+    <div class="ctxitem"><div class="k">${hasStop?'Riesgo asumido (B)':'Drawdown / colchón (B)'}</div><div class="v v-red">${fmtMoney(Beff)}${hasStop?` <span style="font-size:11px;color:var(--faint)">stop manual · colchón ${fmtMoney(c.B)}</span>`:''}</div></div>
+    <div class="ctxitem"><div class="k">Pérdida por día (L)</div><div class="v">${c.model==='aggressive'?'todo el buffer':fmtMoney(Math.min(c.L,Beff))}</div></div>
+    <div class="ctxitem"><div class="k">Días malos que aguantas</div><div class="v">${c.model==='aggressive'?'1 (all-in)':(Beff/Math.min(c.L,Beff)).toFixed(1)}</div></div>`;
+
+  const ov=state.phases[key].recovery||'auto';
+  const isGood=c.model==='static';
+  const modelName={static:'RECUPERAS (estático)',trailing:'TRAILING (te persigue)',aggressive:'ALL-IN'}[c.model];
+  document.getElementById('phRecov').className='recov '+(isGood?'yes':'no');
+  document.getElementById('phRecov').innerHTML=`
+    <span class="badge">${modelName}</span>
+    <span class="why">${c.why}</span>
+    <span class="ovr">
+      <button data-r="auto" class="${ov==='auto'?'act':''}">Auto</button>
+      <button data-r="static" class="${ov==='static'?'act':''}">Estático</button>
+      <button data-r="trailing" class="${ov==='trailing'?'act':''}">Trailing</button>
+      <button data-r="aggressive" class="${ov==='aggressive'?'act':''}">All-in</button>
+    </span>`;
+  document.querySelectorAll('#phRecov .ovr button').forEach(b=>b.addEventListener('click',()=>{state.phases[key].recovery=b.dataset.r;render();}));
+
+  document.getElementById('phProb').textContent=fmtPct(pr.p);
+  document.getElementById('phFormula').innerHTML =
+    c.model==='static' ? `P = B/(G+B) = ${fmtMoney(Beff)}/(${fmtMoney(c.G)}+${fmtMoney(Beff)})${hasStop?' — B = tu riesgo manual (stop autoimpuesto)':''}`
+    : c.model==='trailing' ? (c.intraday
+        ? `P = e⁻¹·(D/G) — trailing continuo intradía con bloqueo`
+        : dCap>0
+          ? `P = simulación de supervivencia (paseo multi-día; el DLL te deja recuperar)`
+          : `P = ∏ DD/(g+DD) por día (all-in: un día malo = fuera)`)
+    : `P = producto de días ganadores (arriesgas ${fmtMoney(c.B)}/día)`;
+  document.getElementById('phCmp').innerHTML=
+    `<div>Estático (recuperas): <b>${fmtPct(pr.staticP)}</b></div>`+
+    `<div>Trailing (te persigue): <b style="color:var(--amber)">${fmtPct(pr.trailingP)}</b></div>`+
+    `<div>All-in (1 día malo = fuera): <span class="agg">${fmtPct(pr.aggP)}</span></div>`+
+    `<div style="color:var(--faint)">El tipo de drawdown lo cambia todo.</div>`;
+
+  walk.setMode(c.G,hasStop?Beff:c.B,c.model,Math.min(c.L,Beff));
+
+  const evH=ev||computeEV(state);
+  renderPlan(key,pr,evH);
+  renderHedge(key,pr,evH);
+}
+
+/* Celdas del hedge incrustadas en el plan: por índice de día → celda o null */
+function hedgeCellVals(key,pr,ev,days){
+  if(!state.hedge.on||!ev||key==='ev')return null;
+  const H=hedgeCalc(key,pr,ev);
+  if(H.V<=0)return {H,cells:days.map(()=>null)};
+  if(H.perDay){
+    let j=0;
+    return {H,cells:days.map(d=>{ if(!(d.g>0))return null; const r=H.rows[j++]; return r?{mEx:r.mEx,mUp:r.mUp,pay:r.pay,target:r.H,ex:H.rep.cost>0?r.pay/H.rep.cost:0}:null; })};
+  }
+  return {H,cells:days.map(()=>({mEx:H.microsExact,mUp:H.microsUp,pay:H.payDeath,target:H.V,ex:H.rep.cost>0?H.payDeath/H.rep.cost:0,st:true}))};
+}
+const hedgeMHtml=cv=>{
+  if(!cv)return '<span style="color:var(--faint)">—</span>';
+  const mic=hedgeFam().micro;
+  return state.hedge.round
+    ? `<b style="color:var(--green);font-family:var(--mono)">↔${cv.mUp} ${mic}</b> <span style="color:var(--faint);font-size:10.5px">(${nfm2(cv.mEx)})</span>`
+    : `<b style="color:var(--green);font-family:var(--mono)">↔${nfm2(cv.mEx)} ${mic}</b>`;
+};
+const hedgeVHtml=cv=>{
+  if(!cv)return '<span style="color:var(--faint)">—</span>';
+  return state.hedge.round
+    ? `<span style="color:var(--green);font-family:var(--mono)">+${fmtMoney(cv.pay)}</span> <span style="color:var(--faint);font-size:10.5px">objetivo ${fmtMoney(cv.target)}</span>`
+    : `<span style="color:var(--green);font-family:var(--mono)">+${fmtMoney(cv.pay)}</span> <span style="color:var(--faint);font-size:10.5px">${cv.ex>0?nfm2(cv.ex)+' ex.':''}</span>`;
+};
+function updateHedgeCells(key,pr,ev,days){
+  const hv=hedgeCellVals(key,pr,ev,days);
+  const show=!!hv;
+  const thM=document.getElementById('thHm'),thV=document.getElementById('thHv');
+  if(thM)thM.style.display=show?'':'none'; if(thV)thV.style.display=show?'':'none';
+  if(!hv)return;
+  const ms=document.querySelectorAll('#labBody .hedge-m'),vs=document.querySelectorAll('#labBody .hedge-v');
+  hv.cells.forEach((cv,i)=>{if(ms[i])ms[i].innerHTML=hedgeMHtml(cv);if(vs[i])vs[i].innerHTML=hedgeVHtml(cv);});
+}
+function renderPlan(key,pr,ev){
+  document.getElementById('firstPayoutGoalWrap').classList.toggle('hidden',key!=='pay1'||curFirm!=='lucidflex25');
+  document.getElementById('firstPayoutGoal').value=state.phases.pay1.goal||'';
+  const c=phaseCtx(key,state);
+  const ph=state.phases[key];
+  const manual=ph.mode==='manual';
+  const riskAuto=ph.riskAuto!==false;
+  const days=activeDays(key,state,c);
+  document.getElementById('modeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('act',b.dataset.v===ph.mode));
+  document.getElementById('riskSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('act',b.dataset.v===(riskAuto?'auto':'manual')));
+  document.getElementById('patterns').style.opacity=manual?'1':'.4';
+  document.getElementById('patterns').style.pointerEvents=manual?'auto':'none';
+  document.getElementById('labAdd').disabled=!manual;
+
+  // El tope diario decide el régimen. La columna PROB. DÍA solo se multiplica = fase cuando es
+  // all-in (sin DLL, trailing EOD) o agresivo. Con DLL o estático recuperas → no multiplica.
+  const dCap = c.dll>0 ? c.dll : (state.riskPerDay>0 ? Math.min(state.riskPerDay,c.B) : 0);
+  const hv=hedgeCellVals(key,pr,ev,days);
+  const thM=document.getElementById('thHm'),thV=document.getElementById('thHv');
+  if(thM)thM.style.display=hv?'':'none'; if(thV)thV.style.display=hv?'':'none';
+  document.getElementById('labBody').innerHTML=days.map((d,i)=>{
+    const r=d.r>0?d.r:c.L, p=pStep(d.g,r);
+    const hcells=hv?`<td class="num hedge-m">${hedgeMHtml(hv.cells[i])}</td><td class="num hedge-v">${hedgeVHtml(hv.cells[i])}</td>`:'';
+    return `<tr><td>Día ${i+1}</td>
+      <td class="num"><input class="lab-inp lab-g" data-i="${i}" type="number" value="${Math.round(d.g)}" ${manual?'':'disabled'}></td>
+      <td class="num"><input class="lab-inp lab-r" data-i="${i}" type="number" value="${Math.round(r)}" ${riskAuto?'disabled':''} title="${riskAuto?'Riesgo automático = tu colchón acumulado (máx entre drawdown y lo ganado). Pulsa «Riesgo manual» para editarlo.':'Riesgo manual'}"></td>
+      <td class="num lab-p" title="Probabilidad orientativa de alcanzar el objetivo antes del stop: riesgo / (objetivo + riesgo). No equivale a la probabilidad de completar la fase.">${fmtPct(p)}</td>
+      ${hcells}
+      <td class="num">${manual?`<button class="lab-del" data-i="${i}">✕</button>`:''}</td></tr>`;}).join('');
+
+  const BeffP=effBuffer(c,days,ph), stopP=c.model==='static'&&BeffP<c.B;
+  document.getElementById('planNote').innerHTML =
+    c.model==='static' ? (stopP
+      ? `✅ Estático con RIESGO MANUAL: tu stop autoimpuesto (${fmtMoney(BeffP)}) es tu nueva línea de muerte — no llegas a quemar el colchón entero (${fmtMoney(c.B)}). La fase sigue siendo la martingala B/(G+B), pero con B = tu stop. Repartir los objetivos en más o menos días sigue sin cambiar la probabilidad; lo que la cambia es cuánto riesgo total asumes.`
+      : '✅ Estático (2.º y 3.er retiro): recuperas de un día malo, no mueres. Por eso la fase NO es "ganar todos los días" (producto) sino la martingala B/(G+B), igual repartas como repartas. Los % por día no se multiplican aquí: el plan solo cambia cuántos días tardas, no la probabilidad.')
+    : (c.model==='trailing' && c.intraday) ? '⚠️ Trailing intradía: la línea persigue tick a tick (modelo continuo). El plan diario NO cambia la probabilidad; mandan el objetivo y el drawdown. Es el caso más duro.'
+    : (c.model==='trailing' && dCap>0) ? '⚠️ Trailing + DLL: sobrevives los días malos (pierdes solo el DLL), así que la fase no es el producto de los días — sale de la SIMULACIÓN de supervivencia (mira el paseo y el histograma de abajo). Un tope más fino = más días expuesto = algo menos de probabilidad.'
+    : c.model==='trailing' ? '⚠️ Trailing EOD (sin DLL = all-in): un día malo te lleva al drawdown y fuera. La fase es el producto de los días (∏ DD/(g+DD)); menos días = más probabilidad.'
+    : '🔥 All-in: cada día es a vida o muerte. Concentrar el objetivo en menos días sube la probabilidad (producto de días ganadores).';
+  document.getElementById('planNote').innerHTML += '<br>Prob. día: estimación por objetivo/stop = riesgo / (objetivo + riesgo), bajo el modelo de juego justo. No es una tasa de acierto histórica ni la probabilidad total de la fase. Objetivo $0 = 100% (ya alcanzado, sin trade).';
+
+  // validación
+  const total=days.reduce((a,d)=>a+d.g,0), maxDay=Math.max(...days.map(d=>d.g),0);
+  const consOn=key==='eval'&&state.consEnabled&&state.consistency>0;
+  const consLim=consOn?state.consistency/100:1, maxPct=total>0?maxDay/total:0;
+  const covers=total>=c.G-1e-6, consOk=!consOn||maxPct<=consLim+1e-6;
+  const minD=key==='eval'?state.minDays:1, daysOk=days.length>=minD&&(key!=='eval'||state.maxDays<=0||days.length<=state.maxDays);
+  const ico=ok=>`<span class="ic">${ok?'✓':'✕'}</span>`;
+  document.getElementById('validStrip').innerHTML=`
+    <div class="vchip ${covers?'ok':'bad'}">${ico(covers)}<span class="v">${fmtMoney(total)} / ${fmtMoney(c.G)} objetivo</span></div>
+    ${consOn?`<div class="vchip ${consOk?'ok':'bad'}">${ico(consOk)}<span class="v">día máx ${(maxPct*100).toFixed(0)}% ≤ ${state.consistency}%</span></div>`:''}
+    <div class="vchip ${daysOk?'ok':'bad'}">${ico(daysOk)}<span class="v">${days.length} días${key==='eval'?' (mín '+minD+')':''}</span></div>`;
+}
+
+function renderEV(ev){
+  const evEl=document.getElementById('heroEV');
+  evEl.textContent=fmtMoney(ev.evNet);evEl.className='hero-val '+(ev.evNet>=0?'pos':'neg');
+  document.getElementById('heroSub').innerHTML=`por examen de ${fmtMoney(state.buyCost)} · ${ev.evNet>=0?'<span style="color:var(--green)">EV positivo</span>':'<span style="color:var(--red)">EV negativo</span>'}`;
+  const roiEl=document.getElementById('sRoi');roiEl.textContent=(ev.roi>=0?'+':'−')+Math.abs(ev.roi).toFixed(0)+'%';roiEl.className='v '+(ev.roi>=0?'v-green':'v-red');
+  document.getElementById('sAny').textContent=fmtPct(ev.c1);
+  document.getElementById('sGross').textContent=fmtMoney(ev.evGross);
+  document.getElementById('sExp').textContent=ev.exp.toFixed(2).replace('.',',');
+
+  const ml=c=>c.model==='trailing'?(c.intraday?'trailing intradía':'trailing EOD'):(c.model==='static'?'estático/bloqueado':'all-in');
+  const rows=[
+    {n:'Aprobar examen',m:ml(ev.pe.c),pc:ev.pe.p,ac:state.includeApprove?ev.pe.p:1,ve:'—'},
+    {n:'1.er retiro',m:ml(ev.p1.c),pc:ev.p1.p,ac:ev.c1,ve:fmtMoney(ev.ve[0])},
+    {n:'2.º retiro',m:ml(ev.p2.c),pc:ev.p2.p,ac:ev.c2,ve:fmtMoney(ev.ve[1])},
+    {n:'3.er retiro',m:ml(ev.p3.c),pc:ev.p3.p,ac:ev.c3,ve:fmtMoney(ev.ve[2])}
+  ];
+  document.getElementById('cascadeBody').innerHTML=rows.map(x=>`<tr><td>${x.n}</td><td style="color:var(--dim)">${x.m}</td><td class="num">${fmtPct(x.pc)}</td><td class="num" style="color:var(--neon-br)">${fmtPct(x.ac)}</td><td class="num" style="color:var(--green)">${x.ve}</td></tr>`).join('');
+
+  document.getElementById('conclusion').innerHTML=`
+    <p style="margin-bottom:9px">Cada examen comprado tiene una esperanza matemática de <b style="color:var(--green);font-family:var(--mono)">${fmtMoney(ev.evNet)}</b>.</p>
+    <p style="margin-bottom:9px">El ROI esperado es <b style="color:var(--green);font-family:var(--mono)">${(ev.roi>=0?'+':'−')+Math.abs(ev.roi).toFixed(1)}%</b> sobre el coste (${fmtMoney(state.buyCost)}).</p>
+    <p>La probabilidad de conseguir al menos un retiro es <b style="color:var(--neon-br);font-family:var(--mono)">${fmtPct(ev.c1)}</b> ${state.includeApprove?'(incluye aprobar)':'(condicionada a estar fondeado)'}.</p>`;
+
+  document.getElementById('assumeList').innerHTML=[
+    `Juego justo (sin ventaja). ESTÁTICO/bloqueado → P = B/(G+B); con RIESGO MANUAL, B = tu stop autoimpuesto, no el colchón entero. TRAILING EOD → producto día-a-día ∏ DD/(g+DD) con los mínimos días que permite la consistencia. TRAILING INTRADÍA → e⁻¹·(D/G), la línea persigue tick a tick (lo más duro). ALL-IN → producto de días ganadores.`,
+    `Cuenta ${state.ddType==='static'?'estática':'trailing ('+state.ddType+')'}. Aprobar y 1.er retiro usan el modelo "${ev.pe.c.model}".`,
+    `Bloqueo del colchón: en cuenta trailing, al generar el colchón la línea se congela en el inicio. Por eso 2.º y 3.er retiro son contra colchón fijo (buffer = colchón, ${fmtPct(2100/4100)} con los valores típicos). En cuenta estática el buffer del retiro es colchón + drawdown.`,
+    `El 1.er retiro combina construir el colchón (trailing, lo difícil) y luego retirar con la línea ya bloqueada.`,
+    `DLL ${state.dllEnabled?'activo ('+fmtMoney(state.dllSize)+'): limita la pérdida diaria, pero en trailing NO evita morir al devolver ganancias':'inactivo: pérdida diaria por defecto = medio drawdown'}.`,
+    `Split ${state.split}% → ${fmtMoney(ev.net)} netos por retiro. Horizonte: 3 retiros. Sin comisiones, slippage ni edge real: es un modelo, no una predicción.`
+  ].map(t=>`<li>${t}</li>`).join('');
+}
+
+/* ===== WALK VIZ ===== */
+const walk=(function(){
+  const cv=document.getElementById('walk'),ctx=cv.getContext('2d');
+  let W=900,H=170,target=3000,dd=2000,model='static',paths=[],current=null;
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  function resize(){W=cv.clientWidth*dpr;H=cv.clientHeight*dpr;cv.width=W;cv.height=H;}
+  function yFor(v){const span=target+dd,frac=(v+dd)/span;return H*0.9-frac*H*0.8;}
+  function drawLine(pts,key){const sx=W/600;ctx.beginPath();pts.forEach((pt,i)=>{const x=pt.x*sx,y=yFor(pt[key]);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();}
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    ctx.lineWidth=dpr;ctx.setLineDash([7*dpr,5*dpr]);ctx.shadowBlur=8*dpr;
+    ctx.strokeStyle='rgba(52,217,118,.7)';ctx.shadowColor='rgba(52,217,118,.6)';let y=yFor(target);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+    ctx.strokeStyle='rgba(255,92,102,.55)';ctx.shadowColor='rgba(255,92,102,.5)';y=yFor(-dd*0.999);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+    ctx.shadowBlur=0;ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(147,166,204,.18)';y=yFor(0);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+    ctx.font=`${10*dpr}px 'IBM Plex Mono'`;
+    ctx.fillStyle='rgba(52,217,118,.85)';ctx.fillText('🚀 +'+Math.round(target),9*dpr,yFor(target)-6*dpr);
+    ctx.fillStyle='rgba(255,92,102,.85)';ctx.fillText('ruina −'+Math.round(dd)+(model==='trailing'?' (inicial)':''),9*dpr,yFor(-dd*0.999)+15*dpr);
+    paths.forEach(p=>{ctx.globalAlpha=.14;ctx.lineWidth=1.4*dpr;ctx.strokeStyle=p.hit==='t'?'#34D976':'#FF5C66';drawLine(p.pts,'v');});
+    ctx.globalAlpha=1;
+    if(current){
+      if(model==='trailing'){ctx.globalAlpha=.5;ctx.lineWidth=1.5*dpr;ctx.setLineDash([4*dpr,4*dpr]);ctx.strokeStyle='#FF5C66';drawLine(current.pts,'kill');ctx.setLineDash([]);ctx.globalAlpha=1;}
+      ctx.lineWidth=2*dpr;ctx.shadowBlur=10*dpr;const col=current.hit==='t'?'#34D976':(current.hit==='r'?'#FF5C66':'#5C9FFF');ctx.strokeStyle=col;ctx.shadowColor=col;drawLine(current.pts,'v');ctx.shadowBlur=0;
+    }
+  }
+  function tick(){
+    if(!current)current={pts:[{x:0,v:0,kill:-dd}],v:0,peak:0,done:false,hit:null,step:0};
+    const ss=(target+dd)/55;
+    for(let s=0;s<6&&!current.done;s++){
+      current.step++;current.v+=(Math.random()<.5?-1:1)*ss;
+      if(current.v>current.peak)current.peak=current.v;
+      const kill = model==='trailing' ? Math.min(current.peak-dd, 0) : -dd;   // se bloquea en el inicio (0)
+      current.pts.push({x:current.step,v:current.v,kill});
+      if(current.v>=target){current.done=true;current.hit='t';}
+      else if(current.v<=kill){current.done=true;current.hit='r';}
+      else if(current.step>=600){current.done=true;current.hit=current.v>0?'t':'r';}
+    }
+    if(current.done){paths.push(current);if(paths.length>8)paths.shift();current=null;}
+    frame();requestAnimationFrame(tick);
+  }
+  function setMode(t,d,m,L){target=Math.max(1,t);dd=Math.max(1,d);model=m;paths=[];current=null;resize();if(reduce)frame();}
+  resize();window.addEventListener('resize',()=>{resize();frame();});
+  if(!reduce)tick();else frame();
+  return {setMode};
+})();
+
+/* ===== SIM EVENTS ===== */
+let testRunning=false;
+document.getElementById('btnTest').addEventListener('click',()=>{
+  if(testRunning)return; if(state.activeTab==='ev')return;
+  const key=state.activeTab;
+  const sim=simPhase(key,state,state.testTrials);
+  const ev=phaseProb(key,state);
+  testRunning=true;
+  const btn=document.getElementById('btnTest');btn.disabled=true;btn.textContent='⏳ Simulando…';
+  document.getElementById('progress').classList.add('on');
+  document.getElementById('testResults').classList.remove('on');
+  sim.run(
+    (pass,done)=>{document.getElementById('progressBar').style.width=(done/state.testTrials*100).toFixed(0)+'%';document.getElementById('empPass').textContent=fmtPct(pass/done);},
+    (pass,N,failDay)=>{
+      testRunning=false;btn.disabled=false;btn.textContent='▶ Probar otra vez';
+      document.getElementById('progress').classList.remove('on');
+      document.getElementById('testResults').classList.add('on');
+      const emp=pass/N, th=ev.p;
+      document.getElementById('empPass').textContent=fmtPct(emp);
+      document.getElementById('trCmp').innerHTML=`<div>Teórica del modelo: <b>${fmtPct(th)}</b></div><div>Diferencia: <b>${((emp-th)*100>=0?'+':'')+((emp-th)*100).toFixed(2).replace('.',',')} pp</b></div><div>${N.toLocaleString('es-ES')} intentos</div>`;
+      const pp=(emp*100).toFixed(0);
+      document.getElementById('splitBar').innerHTML=`<div class="pass" style="width:${emp*100}%">${emp>0.08?'aprueba '+pp+'%':''}</div><div class="fail" style="width:${(1-emp)*100}%">${(1-emp)>0.08?'quema '+(100-pp)+'%':''}</div>`;
+      const days=sim.days, tf=Object.values(failDay).reduce((a,b)=>a+b,0)||1;
+      const intradayMode=(sim.c.model==='trailing'&&sim.c.intraday);
+      let html='<div class="ht">'+(intradayMode?'Progreso alcanzado al quemar la cuenta (en nº de objetivos diarios)':'¿En qué día se quema la cuenta?')+'</div>';
+      const maxLab=Math.max(...Object.keys(failDay).map(Number),days.length||1);
+      for(let dd=1;dd<=maxLab;dd++){const cnt=failDay[dd]||0;html+=`<div class="hist-row"><span class="lab2">${intradayMode?'×'+dd:'Día '+dd}</span><span class="track2"><span class="fillb" style="width:${cnt/tf*100}%"></span></span><span class="pct2">${(cnt/N*100).toFixed(1).replace('.',',')}%</span></div>`;}
+      document.getElementById('hist').innerHTML=html;
+      const mtxt = intradayMode ? 'Intradía: la línea persigue continuamente, así que el plan diario no cambia P (fórmula e⁻¹·D/G).'
+        : {static:'Como el drawdown es estático, repartir distinto los días no cambia la probabilidad, solo la velocidad.',trailing:'Trailing EOD: el reparto importa — objetivos diarios cercanos a la pérdida por día suelen rendir mejor.',aggressive:'Como vas all-in, concentrar el objetivo en menos días sube la probabilidad.'}[sim.c.model];
+      document.getElementById('insight').innerHTML=`La simulación da <b>${fmtPct(emp)}</b> frente a la teórica <b>${fmtPct(th)}</b> (la diferencia es ruido de muestreo: confirma el modelo). ${mtxt}`;
+    }
+  );
+});
+document.getElementById('trialsSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{document.getElementById('trialsSeg').querySelectorAll('button').forEach(x=>x.classList.remove('act'));b.classList.add('act');state.testTrials=+b.dataset.v;}));
+
+/* ===== PLAN EDIT EVENTS ===== */
+/* ===== FIRST PAYOUT GOAL INPUT ===== */
+document.getElementById('firstPayoutGoal').addEventListener('input',e=>{
+  if(curFirm!=='lucidflex25')return;
+  const value=e.target.valueAsNumber;
+  if(!Number.isFinite(value)||value<=0){e.target.setCustomValidity('Introduce una meta mayor que cero.');return;}
+  e.target.setCustomValidity('');
+  state.phases.pay1.goal=value;
+  render();
+});
+/* ===== END FIRST PAYOUT GOAL INPUT ===== */
+document.getElementById('modeSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  const key=state.activeTab;if(key==='ev')return;state.phases[key].mode=b.dataset.v;
+  if(b.dataset.v==='manual'&&!state.phases[key].days.length){const c=phaseCtx(key,state);state.phases[key].days=autoDays(key,state,c);}
+  render();
+}));
+document.getElementById('riskSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  const key=state.activeTab;if(key==='ev')return;const ph=state.phases[key];
+  if(b.dataset.v==='manual'){
+    // Pasar el riesgo a manual: congela los valores actuales (con el riesgo auto ya calculado) en un
+    // plan editable, para poder tocarlos a mano. Objetivos y riesgo quedan editables.
+    const c=phaseCtx(key,state);
+    ph.days=activeDays(key,state,c).map(d=>({g:d.g,r:d.r}));
+    ph.mode='manual'; ph.riskAuto=false;
+  } else {
+    ph.riskAuto=true;   // volver a auto: el riesgo se recalcula solo desde los objetivos
+  }
+  render();
+}));
+document.getElementById('patterns').querySelectorAll('[data-pat]').forEach(b=>b.addEventListener('click',()=>{
+  const key=state.activeTab;if(key==='ev')return;const c=phaseCtx(key,state);
+  state.phases[key].mode='manual';state.phases[key].days=patternDays(b.dataset.pat,key,state,c);render();
+}));
+document.getElementById('labAdd').addEventListener('click',()=>{
+  const key=state.activeTab;if(key==='ev')return;const c=phaseCtx(key,state);
+  if(state.phases[key].mode!=='manual')return;
+  state.phases[key].days.push({g:0,r:Math.round(c.L)});render();
+});
+document.getElementById('labBody').addEventListener('input',e=>{
+  const key=state.activeTab;if(key==='ev')return;const i=+e.target.dataset.i;if(isNaN(i))return;
+  const ph=state.phases[key];if(ph.mode!=='manual'){const c=phaseCtx(key,state);ph.days=autoDays(key,state,c);ph.mode='manual';}
+  if(e.target.classList.contains('lab-g'))ph.days[i].g=e.target.value===''?0:parseFloat(e.target.value);
+  if(e.target.classList.contains('lab-r'))ph.days[i].r=e.target.value===''?0:parseFloat(e.target.value);
+  // Un ÚNICO cálculo (ev) y refrescamos TAB + DETALLE a la vez, sin tocar los inputs (no roba foco).
+  // Antes esto solo actualizaba el detalle → el tab se quedaba desincronizado.
+  const ev=computeEV(state);
+  const pr=key==='eval'?ev.pe:key==='pay1'?ev.p1:key==='pay2'?ev.p2:ev.p3;
+  // TAB
+  document.querySelectorAll('#tabbar .tab').forEach(t=>{const k=t.dataset.tab;const tp=t.querySelector('.tp');if(!tp)return;
+    if(k==='ev'){tp.textContent=fmtMoney(ev.evNet);t.classList.toggle('neg',ev.evNet<0);}
+    else{const pp=k==='eval'?ev.pe:k==='pay1'?ev.p1:k==='pay2'?ev.p2:ev.p3;tp.textContent=fmtPct(pp.p);}});
+  // DETALLE (mismo pr que el tab)
+  document.getElementById('phProb').textContent=fmtPct(pr.p);
+  const c=pr.c, dCap=c.dll>0?c.dll:(state.riskPerDay>0?Math.min(state.riskPerDay,c.B):0);
+  if(c.model==='static'){
+    const BeffL=(pr.Beff&&pr.Beff>0)?pr.Beff:c.B, stopL=BeffL<c.B;
+    document.getElementById('phFormula').innerHTML=`P = B/(G+B) = ${fmtMoney(BeffL)}/(${fmtMoney(c.G)}+${fmtMoney(BeffL)})${stopL?' — B = tu riesgo manual (stop autoimpuesto)':''}`;
+    const cx=document.querySelectorAll('#phCtx .ctxitem');
+    if(cx[1]){cx[1].querySelector('.k').textContent=stopL?'Riesgo asumido (B)':'Drawdown / colchón (B)';
+      cx[1].querySelector('.v').innerHTML=`${fmtMoney(BeffL)}${stopL?` <span style="font-size:11px;color:var(--faint)">stop manual · colchón ${fmtMoney(c.B)}</span>`:''}`;}
+    if(cx[3])cx[3].querySelector('.v').textContent=(BeffL/Math.min(c.L,BeffL)).toFixed(1);
+  }
+  document.querySelectorAll('.lab-p').forEach((el,idx)=>{const d=pr.days[idx];if(d){const rr=d.r>0?d.r:pr.c.L;el.textContent=fmtPct(pStep(d.g,rr));}});
+  // Riesgo AUTO: la columna de riesgo se recalcula sola (colchón acumulado). No roba foco: son otros inputs.
+  if(ph.riskAuto!==false){
+    document.querySelectorAll('#labBody .lab-r').forEach((el,idx)=>{const d=pr.days[idx];if(d)el.value=Math.round(d.r);});
+  }
+  document.getElementById('phCmp').innerHTML=
+    `<div>Estático (recuperas): <b>${fmtPct(pr.staticP)}</b></div>`+
+    `<div>Trailing (te persigue): <b style="color:var(--amber)">${fmtPct(pr.trailingP)}</b></div>`+
+    `<div>All-in (1 día malo = fuera): <span class="agg">${fmtPct(pr.aggP)}</span></div>`+
+    `<div style="color:var(--faint)">El tipo de drawdown lo cambia todo.</div>`;
+  renderValidation(key);
+  if(state.hedge.on){const ho=document.getElementById('hedgeOut');if(ho)ho.innerHTML=hedgeOutHTML(key,pr,ev);updateHedgeCells(key,pr,ev,pr.days);}
+});
+document.getElementById('labBody').addEventListener('click',e=>{
+  if(!e.target.classList.contains('lab-del'))return;const key=state.activeTab;if(key==='ev')return;
+  const i=+e.target.dataset.i;const ph=state.phases[key];ph.mode='manual';if(!ph.days.length){const c=phaseCtx(key,state);ph.days=autoDays(key,state,c);}
+  ph.days.splice(i,1);render();
+});
+function renderValidation(key){
+  const c=phaseCtx(key,state), days=activeDays(key,state,c);
+  const total=days.reduce((a,d)=>a+d.g,0), maxDay=Math.max(...days.map(d=>d.g),0);
+  const consOn=key==='eval'&&state.consEnabled&&state.consistency>0, consLim=consOn?state.consistency/100:1, maxPct=total>0?maxDay/total:0;
+  const covers=total>=c.G-1e-6, consOk=!consOn||maxPct<=consLim+1e-6;
+  const minD=key==='eval'?state.minDays:1, daysOk=days.length>=minD;
+  const ico=ok=>`<span class="ic">${ok?'✓':'✕'}</span>`;
+  document.getElementById('validStrip').innerHTML=`
+    <div class="vchip ${covers?'ok':'bad'}">${ico(covers)}<span class="v">${fmtMoney(total)} / ${fmtMoney(c.G)} objetivo</span></div>
+    ${consOn?`<div class="vchip ${consOk?'ok':'bad'}">${ico(consOk)}<span class="v">día máx ${(maxPct*100).toFixed(0)}% ≤ ${state.consistency}%</span></div>`:''}
+    <div class="vchip ${daysOk?'ok':'bad'}">${ico(daysOk)}<span class="v">${days.length} días</span></div>`;
+}
+
+/* ===== GLOBAL PARAM WIRING ===== */
+const linked=[
+  {key:'target',sl:'sl_target',num:'target',bb:'bb_target',fmt:fmtMoney},
+  {key:'ddSize',sl:'sl_ddSize',num:'ddSize',bb:'bb_ddSize',fmt:fmtMoney},
+  {key:'buyCost',sl:'sl_buyCost',num:null,bb:'bb_buyCost',fmt:fmtMoney},
+  {key:'bufferReq',sl:'sl_bufferReq',num:null,bb:'bb_bufferReq',fmt:fmtMoney},
+  {key:'payoutAmount',sl:'sl_payoutAmount',num:null,bb:'bb_payoutAmount',fmt:fmtMoney},
+  {key:'dllSize',sl:'sl_dllSize',num:null,bb:'bb_dllSize',fmt:fmtMoney}
+];
+function setFill(el){const min=+el.min,max=+el.max;el.style.setProperty('--p',(el.value-min)/(max-min)*100+'%');}
+linked.forEach(L=>{const sl=document.getElementById(L.sl),bb=document.getElementById(L.bb);
+  sl.addEventListener('input',()=>{state[L.key]=+sl.value;bb.textContent=L.fmt(+sl.value);setFill(sl);if(L.num){const n=document.getElementById(L.num);if(n)n.value=sl.value;}resetPlans();render();});});
+function bindNum(id){const el=document.getElementById(id);if(!el)return;el.addEventListener('input',()=>{state[id]=el.value===''?0:parseFloat(el.value);const L=linked.find(x=>x.num===id);if(L){const sl=document.getElementById(L.sl);sl.value=state[id];setFill(sl);document.getElementById(L.bb).textContent=L.fmt(state[id]);}resetPlans();render();});}
+['accountSize','resetCost','minDays','maxDays','consistency','safety','split','payoutMinDays','riskPerDay'].forEach(bindNum);
+function bindChk(id){const el=document.getElementById(id);if(!el)return;el.addEventListener('change',()=>{state[id]=el.checked;if(id==='dllEnabled')document.getElementById('dllSizeWrap').classList.toggle('off',!el.checked);syncConds();resetPlans();render();});}
+['consEnabled','includeApprove','dllEnabled'].forEach(bindChk);
+document.getElementById('ddTypeSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{document.getElementById('ddTypeSeg').querySelectorAll('button').forEach(x=>x.classList.remove('act'));b.classList.add('act');state.ddType=b.dataset.v;document.getElementById('ddTypeLbl').textContent={static:'estático',eod:'EOD trailing',intraday:'intraday'}[b.dataset.v];resetPlans();render();}));
+
+function resetPlans(){PHASES.forEach(k=>{if(state.phases[k].mode==='auto')state.phases[k].days=[];});}
+function syncConds(){document.getElementById('consCond').classList.toggle('on',state.consEnabled);}
+
+function syncAll(){
+  ['accountSize','resetCost','minDays','maxDays','consistency','safety','split','payoutMinDays','riskPerDay'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=state[id];});
+  document.getElementById('consEnabled').checked=state.consEnabled;
+  document.getElementById('includeApprove').checked=state.includeApprove;
+  document.getElementById('dllEnabled').checked=state.dllEnabled;
+  document.getElementById('dllSizeWrap').classList.toggle('off',!state.dllEnabled);
+  linked.forEach(L=>{const sl=document.getElementById(L.sl);sl.value=state[L.key];setFill(sl);document.getElementById(L.bb).textContent=L.fmt(state[L.key]);});
+  document.getElementById('ddTypeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('act',b.dataset.v===state.ddType));
+  document.getElementById('ddTypeLbl').textContent={static:'estático',eod:'EOD trailing',intraday:'intraday'}[state.ddType];
+  syncConds();
+}
+
+/* ===== HEDGE EVENTS ===== */
+document.getElementById('hedgeOn').addEventListener('change',e=>{state.hedge.on=e.target.checked;render();});
+document.getElementById('hedgeBody').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.hm){state.hedge.mode=b.dataset.hm;render();}
+  else if(b.dataset.hi){state.hedge.instr=b.dataset.hi;render();}
+  else if(b.dataset.hr!==undefined){state.hedge.round=b.dataset.hr==='1';render();}
+});
+document.getElementById('hedgeBody').addEventListener('input',e=>{
+  if(e.target.id==='hN')state.hedge.nExams=Math.max(1,parseInt(e.target.value)||1);
+  else if(e.target.id==='hV')state.hedge.manualV=Math.max(0,parseFloat(e.target.value)||0);
+  else if(e.target.id==='hC')state.hedge.contracts=Math.max(1,parseInt(e.target.value)||1);
+  else return;
+  hedgeRefresh(false);   // solo la salida: no roba el foco del input
+});
+
+/* ===== FIRMS ===== */
+function renderChips(){
+  document.getElementById('chipsFirm').innerHTML=Object.entries(firms).map(([k,v])=>`<button class="chip ${k===curFirm?'act':''}" data-k="${k}">${v.name}</button>`).join('');
+  document.querySelectorAll('#chipsFirm .chip').forEach(c=>c.addEventListener('click',()=>{loadFirm(c.dataset.k);syncAll();renderChips();render();}));
+}
+
+renderChips();syncAll();render();
+</script>
+</body>
+</html>

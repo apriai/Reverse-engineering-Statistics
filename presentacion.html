@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>¿Rifa o estrategia? · La esperanza matemática</title>
+<style>
+  :root {
+    --bg: #0a0e13;
+    --card: #121820;
+    --inner: #0b1118;
+    --line: #2a3544;
+    --text: #f2f6fb;
+    --muted: #9aa8ba;
+    --green: #3dd68c;
+    --red: #ff6b6b;
+    --blue: #5b9dff;
+    --amber: #f5c542;
+    --gray: #8190a5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #05070a; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #viewport { position: fixed; inset: 0; overflow: hidden; }
+  body {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: var(--text);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  /* 16:9 lienzo fijo 1600x900, escalado con JS */
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 1600px; height: 900px;
+    transform-origin: 0 0;
+  }
+  .slide {
+    position: absolute; inset: 0;
+    width: 1600px; height: 900px;
+    overflow: hidden;
+    background: radial-gradient(1300px 620px at 50% -12%, #1a2740, transparent 62%), var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 90px 110px;
+    opacity: 0; visibility: hidden;
+    transition: opacity .35s ease, visibility .35s;
+  }
+  .slide.active { opacity: 1; visibility: visible; }
+  body.export .slide { transition: none; }
+
+  .chip {
+    position: absolute; top: 56px; left: 70px;
+    font-size: 26px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase;
+    padding: 10px 24px; border-radius: 999px;
+  }
+  .chip.red { color: var(--red); background: rgba(255,107,107,.12); border: 2px solid rgba(255,107,107,.45); }
+  .chip.green { color: var(--green); background: rgba(61,214,140,.12); border: 2px solid rgba(61,214,140,.45); }
+  .chip.blue { color: var(--blue); background: rgba(91,157,255,.12); border: 2px solid rgba(91,157,255,.45); }
+
+  h1 { font-size: 132px; letter-spacing: -.045em; line-height: 1; font-weight: 900; }
+  h2 { font-size: 76px; letter-spacing: -.035em; line-height: 1.08; font-weight: 850; }
+  .sub { font-size: 48px; color: var(--muted); font-weight: 600; letter-spacing: -.02em; margin-top: 28px; }
+  .red { color: var(--red); } .green { color: var(--green); } .amber { color: var(--amber); } .blue { color: var(--blue); } .muted { color: var(--muted); }
+
+  .giant { font-size: 300px; font-weight: 900; letter-spacing: -.06em; line-height: .95; }
+  .formula {
+    margin-top: 64px; font-size: 68px; font-weight: 850; letter-spacing: -.03em;
+    background: var(--inner); border: 3px solid rgba(91,157,255,.4); border-radius: 36px;
+    padding: 40px 60px;
+  }
+  .tag {
+    margin-top: 30px; font-size: 28px; color: var(--amber); font-weight: 700;
+    background: rgba(245,197,66,.1); border: 2px solid rgba(245,197,66,.35);
+    border-radius: 999px; padding: 10px 26px;
+  }
+
+  /* Barras verticales */
+  .bars { display: flex; align-items: flex-end; justify-content: center; gap: 110px; margin-top: 40px; height: 520px; position: relative; }
+  .bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; width: 260px; }
+  .bar .v { font-size: 88px; font-weight: 900; letter-spacing: -.04em; margin-bottom: 14px; white-space: nowrap; }
+  .bar .c { width: 100%; border-radius: 24px 24px 0 0; }
+  .bar .n { font-size: 38px; font-weight: 700; color: var(--muted); margin-top: 18px; white-space: nowrap; }
+  .c.gray { background: linear-gradient(180deg, #8d9bb0, #4c5a6d); }
+  .c.redc { background: linear-gradient(180deg, #ff8f8f, #d94848); }
+  .c.greenc { background: linear-gradient(180deg, #74f2b4, #22a86a); }
+  .baseline { width: 900px; height: 4px; background: var(--line); border-radius: 2px; }
+
+  /* Embudo */
+  .funnel { width: 1280px; margin-top: 34px; display: grid; gap: 22px; }
+  .fr { display: grid; grid-template-columns: 360px 1fr 190px; align-items: center; gap: 30px; }
+  .fr .l { text-align: left; font-size: 42px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; line-height: 1.1; }
+  .fr .l small { display: block; font-size: 26px; font-weight: 600; color: var(--muted); letter-spacing: 0; margin-top: 6px; }
+  .fcap { margin-top: 18px; font-size: 26px; color: var(--muted); font-weight: 600; }
+  .fr .t { height: 64px; background: #18202c; border-radius: 999px; overflow: hidden; }
+  .fr .f { height: 100%; border-radius: 999px; }
+  .fr .p { text-align: right; font-size: 72px; font-weight: 900; letter-spacing: -.04em; }
+  .f.amberf { background: linear-gradient(90deg, #f5c542, #ffdb73); }
+  .f.greenf { background: linear-gradient(90deg, #22a86a, #3dd68c); }
+
+  /* Cierre */
+  .closing .l1 { font-size: 62px; color: var(--muted); font-weight: 700; letter-spacing: -.02em; }
+  .closing .l2 { font-size: 104px; font-weight: 900; letter-spacing: -.045em; line-height: 1.05; margin-top: 26px; }
+  .closing .l3 {
+    margin-top: 50px; font-size: 54px; font-weight: 850; color: var(--amber);
+    background: rgba(245,197,66,.1); border: 3px solid rgba(245,197,66,.4); border-radius: 999px; padding: 18px 48px;
+  }
+  .closing .l4 { margin-top: 56px; font-size: 32px; font-weight: 700; }
+  .closing .l5 { margin-top: 12px; font-size: 22px; color: var(--muted); }
+
+  /* Controles */
+  #counter {
+    position: fixed; right: 18px; bottom: 14px; z-index: 10;
+    font: 700 15px Inter, system-ui, sans-serif; color: var(--muted);
+    background: rgba(18,24,32,.85); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px;
+  }
+  #progress { position: fixed; left: 0; bottom: 0; height: 4px; background: var(--blue); z-index: 10; transition: width .3s; }
+  .nav {
+    position: fixed; top: 0; bottom: 0; width: 22%; z-index: 5; cursor: pointer;
+  }
+  #prev { left: 0; } #next { right: 0; width: 78%; }
+  #fs {
+    position: fixed; left: 18px; bottom: 14px; z-index: 10; cursor: pointer;
+    font: 700 15px Inter, system-ui, sans-serif; color: var(--muted);
+    background: rgba(18,24,32,.85); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px;
+  }
+  body.export #counter, body.export #progress, body.export #fs { display: none; }
+
+  @page { size: 1600px 900px; margin: 0; }
+  @media print {
+    html, body { overflow: visible; height: auto; background: var(--bg); }
+    #viewport { position: static; overflow: visible; }
+    #stage { position: static; transform: none !important; width: 1600px; height: auto; }
+    .slide { position: relative; opacity: 1; visibility: visible; page-break-after: always; break-after: page; }
+    .slide:last-child { page-break-after: auto; break-after: auto; }
+    #counter, #progress, .nav, #fs { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+
+  <!-- 1 -->
+  <section class="slide">
+    <h1>¿Rifa o <span class="green">estrategia</span>?</h1>
+    <div class="sub">La esperanza matemática</div>
+  </section>
+
+  <!-- 2 -->
+  <section class="slide">
+    <h2>Esperanza = lo que ganas<br/><span class="amber">en promedio</span></h2>
+    <div class="formula">(<span class="amber">probabilidad × premio</span>) − <span class="red">precio</span></div>
+  </section>
+
+  <!-- 3 -->
+  <section class="slide">
+    <div class="chip red">Rifa</div>
+    <div style="font-size:150px;font-weight:900;letter-spacing:-.05em;line-height:1">1 de <span class="red">100,000</span></div>
+    <svg viewBox="0 0 500 200" width="1000" height="400" style="margin-top:36px;border-radius:18px;display:block" role="img" aria-label="100,000 combinaciones, una ganadora">
+      <defs>
+        <pattern id="cells" width="2" height="2" patternUnits="userSpaceOnUse">
+          <rect width="2" height="2" fill="#3a2226" />
+          <rect width="1" height="1" fill="#6a343b" />
+          <rect x="1" y="1" width="1" height="1" fill="#6a343b" />
+        </pattern>
+      </defs>
+      <rect width="500" height="200" fill="url(#cells)" />
+      <rect x="361" y="57" width="1" height="1" fill="#f5c542" />
+      <circle cx="361.5" cy="57.5" r="9" fill="none" stroke="#f5c542" stroke-width="3" />
+      <circle cx="361.5" cy="57.5" r="16" fill="none" stroke="#f5c542" stroke-width="1.5" opacity=".45" />
+    </svg>
+    <div class="tag">ejemplo: boleto $1, premio $50,000</div>
+  </section>
+
+  <!-- 4 -->
+  <section class="slide">
+    <div class="chip red">Rifa</div>
+    <h2>Pagas <span class="muted">$1</span> → te vuelven <span class="red">$0.50</span></h2>
+    <div class="bars">
+      <div class="bar"><div class="v" style="color:#c9d4e3">$1</div><div class="c gray" style="height:340px"></div></div>
+      <div class="bar"><div class="v red">$0.50</div><div class="c redc" style="height:170px"></div></div>
+    </div>
+    <div class="baseline"></div>
+  </section>
+
+  <!-- 5 -->
+  <section class="slide">
+    <div class="chip red">Rifa</div>
+    <div class="giant red">−$0.50</div>
+    <div class="sub" style="font-size:64px;color:var(--text)">pierdes la mitad</div>
+  </section>
+
+  <!-- 6 -->
+  <section class="slide">
+    <div class="chip green">Estrategia</div>
+    <h2>Cuenta <span class="blue">$50</span></h2>
+    <div class="funnel">
+      <div class="fr"><div class="l">Aprobar examen<small>38 de cada 100</small></div><div class="t"><div class="f amberf" style="width:38%"></div></div><div class="p amber">38%</div></div>
+      <div class="fr"><div class="l">1er retiro<small>~10 de cada 100</small></div><div class="t"><div class="f greenf" style="width:27%"></div></div><div class="p green">27%</div></div>
+      <div class="fr"><div class="l">2º retiro<small>~5 de cada 100</small></div><div class="t"><div class="f greenf" style="width:52%"></div></div><div class="p green">52%</div></div>
+      <div class="fr"><div class="l">3er retiro<small>~3 de cada 100</small></div><div class="t"><div class="f greenf" style="width:52%"></div></div><div class="p green">52%</div></div>
+    </div>
+    <div class="fcap">probabilidad de pasar cada paso</div>
+    <div class="tag" style="margin-top:22px;font-size:34px">cada retiro ≈ $900</div>
+  </section>
+
+  <!-- 7 -->
+  <section class="slide">
+    <div class="chip green">Estrategia</div>
+    <h2>Pagas <span class="muted">$50</span> → te vuelven <span class="green">$139</span></h2>
+    <div class="bars">
+      <div class="bar"><div class="v" style="color:#c9d4e3">$50</div><div class="c gray" style="height:122px"></div></div>
+      <div class="bar"><div class="v green">$139</div><div class="c greenc" style="height:340px"></div></div>
+    </div>
+    <div class="baseline"></div>
+  </section>
+
+  <!-- 8 -->
+  <section class="slide">
+    <div class="chip green">Estrategia</div>
+    <div class="giant green">+$89</div>
+    <div class="sub" style="font-size:64px;color:var(--text)">por cada cuenta</div>
+  </section>
+
+  <!-- 9 -->
+  <section class="slide">
+    <div class="chip blue">Comparación</div>
+    <h2>Por cada <span class="amber">$1</span></h2>
+    <!-- escala: $1 = 125px ; $2.78 = 347px ; $0.50 = 62px -->
+    <div class="bars" style="height:560px;gap:160px">
+      <div class="bar" style="width:300px"><div class="v red" style="margin-bottom:88px">$0.50</div><div class="c redc" style="height:62px"></div><div class="n" style="position:absolute;bottom:-70px">Rifa</div></div>
+      <div class="bar" style="width:300px"><div class="v green">$2.78</div><div class="c greenc" style="height:347px"></div><div class="n" style="position:absolute;bottom:-70px">Estrategia</div></div>
+      <div style="position:absolute;left:-150px;right:-150px;bottom:125px;border-top:5px dashed var(--amber)"></div>
+      <div style="position:absolute;right:-150px;bottom:136px;font-size:34px;font-weight:900;color:var(--amber)">$1</div>
+    </div>
+    <div class="baseline" style="margin-bottom:70px"></div>
+  </section>
+
+  <!-- 10 -->
+  <section class="slide closing">
+    <div class="l1">La mayoría pierde en los dos…</div>
+    <div class="l2">pero solo una<br/><span class="green">gana en promedio</span></div>
+    <div class="l3">Disciplina + muchas cuentas</div>
+    <div class="l4">Basado en matemática estadística.</div>
+    <div class="l5">Números aproximados. No es promesa de ganancias.</div>
+  </section>
+
+</div></div>
+
+<div class="nav" id="prev" aria-label="Anterior"></div>
+<div class="nav" id="next" aria-label="Siguiente"></div>
+<div id="fs" title="Pantalla completa (F)" aria-label="Pantalla completa">⛶</div>
+<div id="counter">1 / 10</div>
+<div id="progress"></div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var stage = document.getElementById('stage');
+  var counter = document.getElementById('counter');
+  var progress = document.getElementById('progress');
+  var i = 0;
+
+  function fit() {
+    var vp = document.getElementById('viewport');
+    var s = Math.min(vp.clientWidth / 1600, vp.clientHeight / 900);
+    stage.style.transform = 'scale(' + s + ') translate(-50%, -50%)';
+  }
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (el, k) { el.classList.toggle('active', k === i); });
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    progress.style.width = ((i + 1) / slides.length * 100) + '%';
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+  }
+  function fromHash() {
+    var n = parseInt(location.hash.replace('#', ''), 10);
+    show(isNaN(n) ? 0 : n - 1);
+  }
+  function toggleFs() {
+    if (!document.fullscreenElement) { (document.documentElement.requestFullscreen || function(){}).call(document.documentElement); }
+    else if (document.exitFullscreen) { document.exitFullscreen(); }
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) > -1) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].indexOf(e.key) > -1) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'f' || e.key === 'F') toggleFs();
+  });
+  document.getElementById('next').addEventListener('click', function () { show(i + 1); });
+  document.getElementById('prev').addEventListener('click', function () { show(i - 1); });
+  document.getElementById('fs').addEventListener('click', toggleFs);
+
+  // deslizar en el teléfono
+  var x0 = null;
+  document.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 50) { show(dx < 0 ? i + 1 : i - 1); e.preventDefault(); }
+    x0 = null;
+  });
+
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', fromHash);
+  window.goToSlide = show;
+  fit(); fromHash();
+})();
+</script>
+</body>
+</html>
